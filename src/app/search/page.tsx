@@ -4,46 +4,46 @@ import { useState } from 'react';
 import Header from '@/components/Header';
 
 export default function SearchPage() {
-  const [partNumber, setPartNumber] = useState('');
-  const [result, setResult] = useState(null);
-  const [error, setError] = useState('');
+  const [input, setInput] = useState('');
+  const [result, setResult] = useState<Record<string, unknown> | null>(null);
+  const [loading, setLoading] = useState(false);
 
   const handleSearch = async () => {
-    setError('');
-    setResult(null);
+    setLoading(true);
     try {
-      const res = await fetch(`/api/product?partNumber=${partNumber}`);
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.message || 'Error fetching product');
+      const res = await fetch('/api/ti-query', {
+        method: 'POST',
+        body: JSON.stringify({ query: input }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data: Record<string, unknown> = await res.json();
       setResult(data);
-    } catch (err: any) {
-      setError(err.message);
+    } catch {
+      console.error('Error while fetching');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
     <>
       <Header />
-      <main className="p-8">
-        <h1 className="text-2xl font-bold mb-4">Search for a TI Product</h1>
+      <main>
+        <h1>Search TI Products</h1>
         <input
           type="text"
-          className="border p-2 mr-2"
-          placeholder="Enter part number (e.g. OPA333AIDBVT)"
-          value={partNumber}
-          onChange={(e) => setPartNumber(e.target.value)}
+          value={input}
+          onChange={(e) => setInput(e.target.value)}
+          placeholder="Enter part number"
         />
-        <button onClick={handleSearch} className="bg-blue-600 text-white px-4 py-2 rounded">
-          Search
+        <button onClick={handleSearch} disabled={loading}>
+          {loading ? 'Searching...' : 'Search'}
         </button>
 
-        {error && <p className="text-red-600 mt-4">{error}</p>}
-
-        {result && (
-          <div className="mt-6 bg-gray-100 p-4 rounded">
-            <pre className="text-sm whitespace-pre-wrap">{JSON.stringify(result, null, 2)}</pre>
-          </div>
-        )}
+        {result && <pre>{JSON.stringify(result, null, 2)}</pre>}
       </main>
     </>
   );

@@ -2,57 +2,46 @@
 
 import { useState } from 'react';
 
-export default function CheckProduct() {
-  const [part, setPart] = useState('');
-  const [result, setResult] = useState<any>(null);
+export default function CheckProductPage() {
+  const [query, setQuery] = useState('');
+  const [result, setResult] = useState<Record<string, unknown> | null>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
 
-  const checkPart = async () => {
-    setError('');
-    setResult(null);
+  const checkProduct = async () => {
     setLoading(true);
     try {
-      const res = await fetch(`/api/ti-query?partNumber=${part}`);
-      if (!res.ok) throw new Error('API error');
-      const data = await res.json();
+      const res = await fetch('/api/ti-query', {
+        method: 'POST',
+        body: JSON.stringify({ query }),
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      const data: Record<string, unknown> = await res.json();
       setResult(data);
-    } catch (err: any) {
-      setError('Could not fetch product data.');
+    } catch {
+      console.error('Something went wrong');
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div style={{ padding: 40 }}>
+    <main>
       <h1>Check TI Product</h1>
       <input
         type="text"
-        placeholder="Enter TI Part Number"
-        value={part}
-        onChange={(e) => setPart(e.target.value)}
-        style={{ padding: 8, marginRight: 8 }}
+        value={query}
+        onChange={(e) => setQuery(e.target.value)}
+        placeholder="Enter product ID"
       />
-      <button onClick={checkPart} disabled={loading || !part}>
+      <button onClick={checkProduct} disabled={loading}>
         {loading ? 'Checking...' : 'Check'}
       </button>
-      {error && <p style={{ color: 'red' }}>{error}</p>}
-      {result && (
-        <pre
-          style={{
-            marginTop: 20,
-            padding: 20,
-            background: '#f0f0f0',
-            borderRadius: 8,
-            maxWidth: 800,
-            overflowX: 'auto',
-          }}
-        >
-          {JSON.stringify(result, null, 2)}
-        </pre>
-      )}
-    </div>
+
+      {result && <pre>{JSON.stringify(result, null, 2)}</pre>}
+    </main>
   );
 }
 
