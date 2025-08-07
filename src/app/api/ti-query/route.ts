@@ -1,31 +1,45 @@
-export async function POST(req: Request) {
+export async function POST(request: Request) {
   try {
-    const { query: partNumber } = await req.json();
+    const { query: partNumber } = await request.json();
     const token = await getToken();
 
-    // → Inventory & Pricing API v2
-    const tiResp = await fetch(
-      `https://transact.ti.com/v2/store/products/${encodeURIComponent(partNumber)}?currency=USD`,
-      {
-        headers: {
-          Authorization: `Bearer ${token}`,
-          Accept: 'application/json',
-        },
-      }
-    );
+    const url = `https://transact.ti.com/v2/store/products?partNumbers=${encodeURIComponent(
+      partNumber
+    )}&currency=USD`;
 
-    if (!tiResp.ok) {
+    const tiResp = await fetch(url, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: 'application/json',
+      },
+    });
+
+    // Jeżeli TI zwróci 404 lub pustą tablicę → naprawdę brak produktu
+    if (tiResp.status === 404) {
       return new Response(
-        JSON.stringify({ error: 'TI API request failed', status: tiResp.status }),
-        { status: tiResp.status, headers: { 'Content-Type': 'application/json' } }
+        JSON.stringify({ error: 'Not Found' }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
     const data = await tiResp.json();
-    return new Response(JSON.stringify(data), {
+
+    // Jeżeli tablica jest pusta
+    if (Array.isArray(data) && data.length === 0) {
+      return new Response(
+        JSON.stringify({ error: 'Not Found' }),
+        { status: 404, headers: { 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Jeśli TI zwróci array[0] → rozpakowujemy
+    const result = Array.isArray(data) ? data[0] : data;
+
+    return new Response(JSON.stringify(result), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
+
   } catch (error) {
     console.error('API error:', error);
     return new Response(
@@ -34,6 +48,7 @@ export async function POST(req: Request) {
     );
   }
 }
+
 
 const getToken = async (): Promise<string> => {
   const clientId = process.env.TI_CLIENT_ID!;
