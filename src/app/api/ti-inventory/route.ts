@@ -29,13 +29,26 @@ export async function POST(req: NextRequest) {
     // 4) Zwracamy dane
     return NextResponse.json(data, { status: 200 });
 
-  } catch (err: any) {
-    console.error('TI Inventory error:', err);
-    const status = err.response?.status || 500;
-    return NextResponse.json(
-      { error: err.message || 'TI Inventory request failed' },
-      { status }
-    );
-  }
-}
+  } catch (error: unknown) {
+   // wypisz do konsoli+   if (error instanceof Error) {
+     console.error('TI Inventory error:', error.message);
+   } else {
+     console.error('TI Inventory error (non-Error):', error);
+   }
+
+   // spróbuj wyciągnąć status z odpowiedzi, jeśli to axios-owe Error
+   const status =
+     error instanceof Error && (error as any).response?.status
+       ? (error as any).response.status
+       : 500;
+
+   const message =
+     error instanceof Error ? error.message : 'TI Inventory request failed';
+
+   return NextResponse.json(
+     { error: message },
+     { status }
+   );
+ }
+
 
