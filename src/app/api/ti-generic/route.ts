@@ -22,7 +22,7 @@ async function getToken(): Promise<string> {
   const { access_token, expires_in } = await resp.json();
   cachedToken = access_token;
   expiresAt = now + expires_in*1000 - 30*1000;
-  return cachedToken;
+  return cachedToken!;
 }
 
 export async function POST(req: Request) {
