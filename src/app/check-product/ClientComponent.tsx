@@ -58,7 +58,7 @@ export default function ClientComponent() {
 
       {error && <p style={{ color: 'red' }}>{error}</p>}
       {result && (
-        <pre style={{ background: '#f0f0f0', padding: '1rem' }}>
+        <pre style={{ background: '#000000', padding: '1rem' }}>
           {JSON.stringify(result, null, 2)}
         </pre>
       )}

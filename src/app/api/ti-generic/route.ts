@@ -25,16 +25,14 @@ async function getToken(): Promise<string> {
   return cachedToken!;
 }
 
+// … getToken jak wcześniej …
+
 export async function POST(req: Request) {
   try {
-    const { generic } = await req.json() as { generic: string };
+    const { generic } = (await req.json()) as { generic: string };
     const token = await getToken();
 
-    // używamy “search” endpointu - GET /v2/store/products?genericPartNumber=
-    const url = `https://transact.ti.com/v2/store/products?genericPartNumber=${encodeURIComponent(
-      generic
-    )}&currency=USD`;
-
+    const url = `https://transact.ti.com/v2/store/products/catalog?genericPartNumber=${encodeURIComponent(generic)}&currency=USD`;
     const tiResp = await fetch(url, {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -49,8 +47,9 @@ export async function POST(req: Request) {
       );
     }
 
-    const data = await tiResp.json(); // to będzie array of objects
-    return new Response(JSON.stringify(data), {
+    const json = await tiResp.json();
+    const variants = Array.isArray(json) ? json : json.products;
+    return new Response(JSON.stringify(variants), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
