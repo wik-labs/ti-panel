@@ -40,22 +40,25 @@ export async function POST(req: Request) {
       },
     });
 
-    if (!tiResp.ok) {
+if (!tiResp.ok) {
+      const text = await tiResp.text();
+      console.error('TI API error', tiResp.status, text);
       return new Response(
-        JSON.stringify({ error: 'TI API request failed', status: tiResp.status }),
+        JSON.stringify({ error: `TI API request failed`, status: tiResp.status }),
         { status: tiResp.status, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
+    // 3) Parsujemy odpowiedź z TI
     const json = await tiResp.json();
     const variants = Array.isArray(json) ? json : json.products;
+
     return new Response(JSON.stringify(variants), {
       status: 200,
       headers: { 'Content-Type': 'application/json' },
     });
 
   } catch (error) {
-    console.error('TI API error', tiResp.status, await tiResp.text());
     console.error('Generic search error', error);
     return new Response(
       JSON.stringify({ error: 'Something went wrong' }),
