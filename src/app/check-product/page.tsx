@@ -1,21 +1,29 @@
 'use client';
-import { useState } from 'react';
+
+import { useState, useEffect } from 'react';
+import { useSearchParams } from 'next/navigation';
 
 export default function CheckProductPage() {
-  const [query, setQuery] = useState('');
+  const searchParams = useSearchParams();
+  const paramPart = searchParams.get('part') || '';
+
+  const [query, setQuery] = useState(paramPart);
   const [result, setResult] = useState<Record<string, unknown> | null>(null);
-  const [error, setError] = useState<string| null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  const checkProduct = async () => {
+  const checkProduct = async (partNumber?: string) => {
+    const toQuery = partNumber ?? query;
+    if (!toQuery) return;
+
     setLoading(true);
     setError(null);
     setResult(null);
 
     const res = await fetch('/api/ti-query', {
       method: 'POST',
-      body: JSON.stringify({ query }),
       headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ query: toQuery }),
     });
 
     if (res.status === 404) {
@@ -30,8 +38,16 @@ export default function CheckProductPage() {
     setLoading(false);
   };
 
+  // Gdy jest ?part= w URL, wywołaj raz po mount
+  useEffect(() => {
+    if (paramPart) {
+      checkProduct(paramPart);
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [paramPart]);
+
   return (
-    <main>
+    <main style={{ padding: '1rem' }}>
       <h1>Check TI Product</h1>
       <input
         type="text"
@@ -39,12 +55,16 @@ export default function CheckProductPage() {
         onChange={e => setQuery(e.target.value)}
         placeholder="Enter product ID"
       />
-      <button onClick={checkProduct} disabled={loading}>
+      <button onClick={() => checkProduct()} disabled={loading}>
         {loading ? 'Checking...' : 'Check'}
       </button>
 
       {error && <p style={{ color: 'red' }}>{error}</p>}
-      {result && <pre>{JSON.stringify(result, null, 2)}</pre>}
+      {result && (
+        <pre style={{ background: '#f0f0f0', padding: '1rem' }}>
+          {JSON.stringify(result, null, 2)}
+        </pre>
+      )}
     </main>
   );
 }
