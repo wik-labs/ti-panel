@@ -30,25 +30,26 @@ export async function POST(req: NextRequest) {
     return NextResponse.json(data, { status: 200 });
 
   } catch (error: unknown) {
-   // wypisz do konsoli+   if (error instanceof Error) {
-     console.error('TI Inventory error:', error.message);
-   } else {
-     console.error('TI Inventory error (non-Error):', error);
-   }
+    // wypisz do konsoli
+    if (error instanceof Error) {
+      console.error('TI Inventory error:', error.message);
+    } else {
+      console.error('TI Inventory error (non-Error):', error);
+    }
 
-   // spróbuj wyciągnąć status z odpowiedzi, jeśli to axios-owe Error
-   const status =
-     error instanceof Error && (error as any).response?.status
-       ? (error as any).response.status
-       : 500;
+    // spróbuj wyciągnąć status z odpowiedzi, jeśli to AxiosError
+    const status =
+      error instanceof Error && (error as any).response?.status
+        ? (error as any).response.status
+        : 500;
 
-   const message =
-     error instanceof Error ? error.message : 'TI Inventory request failed';
+    // wybierz komunikat
+    const message =
+      error instanceof Error ? error.message : 'TI Inventory request failed';
 
-   return NextResponse.json(
-     { error: message },
-     { status }
-   );
- }
-
+    return NextResponse.json(
+      { error: message },
+      { status }
+    );
+  }
 
