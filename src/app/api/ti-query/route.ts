@@ -6,7 +6,7 @@ export async function POST(req: Request) {
     const token = await getToken();
 
     const tiResponse = await fetch(
-      `https://api.ti.com/product/v1/products/${partNumber}?storePricing=true`,
+      `https://transact.ti.com/v1/products/${partNumber}?storePricing=true`,
       {
         method: 'GET',
         headers: {
@@ -33,7 +33,7 @@ export async function POST(req: Request) {
       headers: { 'Content-Type': 'application/json' },
     });
   } catch (error) {
-    console.error(error);
+    console.error('API error:', err);
     return new Response(JSON.stringify({ error: 'Something went wrong' }), {
       status: 500,
       headers: { 'Content-Type': 'application/json' },
