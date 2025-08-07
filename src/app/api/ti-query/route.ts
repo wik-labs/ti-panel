@@ -3,16 +3,15 @@ export async function POST(request: Request) {
     const { query: partNumber } = await request.json();
     const token = await getToken();
 
-    const url = `https://transact.ti.com/v2/store/products?partNumbers=${encodeURIComponent(
-      partNumber
-    )}&currency=USD`;
+    const url = `https://transact.ti.com/v2/store/products/${encodeURIComponent(partNumber)}?currency=USD`;
+console.error('Fetching TI single-OPN URL:', url);
 
-    const tiResp = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/json',
-      },
-    });
+const tiResp = await fetch(url, {
+  headers: {
+    Authorization: `Bearer ${token}`,
+    Accept: 'application/json',
+  },
+});
 
     // Jeżeli TI zwróci 404 lub pustą tablicę → naprawdę brak produktu
     if (tiResp.status === 404) {
