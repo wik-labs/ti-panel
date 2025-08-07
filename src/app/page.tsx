@@ -1,13 +1,41 @@
-export default function Home() {
+// src/app/page.tsx
+import Link from 'next/link'
+
+export default function HomePage() {
   return (
-    <main style={{ padding: '2rem' }}>
-      <h1>Welcome to TI Panel</h1>
-      <p>This is the homepage. Use the menu or go to:</p>
-      <ul>
-        <li><a href="/check-product">Check Product</a></li>
-        <li><a href="/search">Search Products</a></li>
-      </ul>
+    <main className="p-8">
+      <h1 className="text-3xl font-bold mb-6">TI-Panel</h1>
+
+      <nav>
+        <ul className="space-y-4">
+          <li>
+            <Link 
+              href="/check-product" 
+              className="text-lg text-blue-400 hover:underline"
+            >
+              🔍 Check Product
+            </Link>
+          </li>
+          <li>
+            <Link 
+              href="/generic-search" 
+              className="text-lg text-blue-400 hover:underline"
+            >
+              🧩 Generic Search (Variants)
+            </Link>
+          </li>
+          <li>
+            <Link 
+              href="/inventory" 
+              className="text-lg text-blue-400 hover:underline"
+            >
+              📦 Inventory & Pricing
+            </Link>
+          </li>
+          {/* w przyszłości: Order, Subscriptions, ASN, Invoices… */}
+        </ul>
+      </nav>
     </main>
-  );
+  )
 }
 
