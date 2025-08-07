@@ -1,13 +1,14 @@
 // src/app/api/ti-generic/route.ts
 import { NextRequest } from 'next/server';
 
-interface CacheEntry {
-  timestamp: number;
-  data: any[];
+interface Variant {
+  tiPartNumber: string;
+  // tu doklej inne pola, które będziesz chciał zwracać
 }
 
-const CACHE_TTL = 4 * 60 * 60 * 1000; // 4 godziny w ms
-const cache = new Map<string, CacheEntry>();
+interface CatalogResponse {
+  products?: Variant[];
+}
 
 let cachedToken = '';
 let expiresAt   = 0;
@@ -27,26 +28,18 @@ async function getToken(): Promise<string> {
   });
   if (!resp.ok) throw new Error(`Token fetch failed: ${resp.status}`);
 
-  const { access_token, expires_in } = await resp.json();
-  cachedToken = access_token;
-  expiresAt   = now + expires_in * 1000 - 30_000;
+  const body = await resp.json() as { access_token: string; expires_in: number };
+  cachedToken = body.access_token;
+  expiresAt   = now + body.expires_in * 1000 - 30_000;
   return cachedToken;
 }
 
 export async function POST(req: NextRequest) {
-  const { generic } = (await req.json()) as { generic: string };
+  // 1) Parsujemy ciało
+  const { generic } = (await req.json()) as { generic?: string };
   if (!generic) {
-    return new Response(
-      JSON.stringify({ error: 'Missing genericPartNumber' }),
-      { status: 400, headers: { 'Content-Type': 'application/json' } }
-    );
-  }
-
-  // 1) Sprawdź cache
-  const entry = cache.get(generic);
-  if (entry && Date.now() - entry.timestamp < CACHE_TTL) {
-    return new Response(JSON.stringify(entry.data), {
-      status: 200,
+    return new Response(JSON.stringify({ error: 'Missing genericPartNumber' }), {
+      status: 400,
       headers: { 'Content-Type': 'application/json' },
     });
   }
@@ -54,39 +47,40 @@ export async function POST(req: NextRequest) {
   try {
     const token = await getToken();
     const url = `https://transact.ti.com/v2/store/products/catalog?genericPartNumber=${encodeURIComponent(generic)}&currency=USD`;
+
     const tiResp = await fetch(url, {
       headers: {
         Authorization: `Bearer ${token}`,
-        Accept: 'application/json',
+        Accept:        'application/json',
       },
     });
 
-    const text = await tiResp.text();
+    // 2) Obsługa błędów TI
     if (!tiResp.ok) {
+      const text = await tiResp.text();
       console.error('TI API error', tiResp.status, text);
-
-      // 2) Jeśli mamy stare cache → zwróć je
-      if (entry) {
-        return new Response(JSON.stringify(entry.data), {
-          status: 200,
-          headers: { 'Content-Type': 'application/json' },
-        });
-      }
-
       return new Response(
         JSON.stringify({ error: 'TI API request failed', status: tiResp.status }),
         { status: tiResp.status, headers: { 'Content-Type': 'application/json' } }
       );
     }
 
-    const json = JSON.parse(text);
-    const variants = Array.isArray(json) ? json : json.products || [];
+    // 3) Parsujemy odpowiedź jako unknown i redukujemy do Variant[]
+    const raw = (await tiResp.json()) as unknown;
+    let variants: Variant[] = [];
 
-    // 3) Nadpisz cache
-    cache.set(generic, {
-      timestamp: Date.now(),
-      data: variants,
-    });
+    if (Array.isArray(raw)) {
+      // czasami TI zwraca od razu tablicę
+      variants = raw as Variant[];
+    } else if (
+      typeof raw === 'object' &&
+      raw !== null &&
+      'products' in raw &&
+      Array.isArray((raw as CatalogResponse).products)
+    ) {
+      // typowy przypadek: { products: [ ... ] }
+      variants = (raw as CatalogResponse).products!;
+    }
 
     return new Response(JSON.stringify(variants), {
       status: 200,
@@ -95,17 +89,10 @@ export async function POST(req: NextRequest) {
 
   } catch (err) {
     console.error('Generic search error', err);
-    if (entry) {
-      // fallback do cache, nawet przy błędzie
-      return new Response(JSON.stringify(entry.data), {
-        status: 200,
-        headers: { 'Content-Type': 'application/json' },
-      });
-    }
-    return new Response(
-      JSON.stringify({ error: 'Something went wrong' }),
-      { status: 500, headers: { 'Content-Type': 'application/json' } }
-    );
+    return new Response(JSON.stringify({ error: 'Something went wrong' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json' },
+    });
   }
 }
 
