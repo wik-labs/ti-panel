@@ -18,11 +18,17 @@ export default function GenericSearchPage() {
     setVariants([]);
 
     const res = await fetch('/api/ti-generic', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ generic }),
-    });
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ generic }),
+});
 
+    if (res.status === 429) {
+        setError('Rate limit exceeded. Please wait and try again.');
+}
+
+
+    
     if (!res.ok) {
       setError('No variants found');
     } else {

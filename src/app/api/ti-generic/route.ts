@@ -55,6 +55,7 @@ export async function POST(req: Request) {
     });
 
   } catch (error) {
+    console.error('TI API error', tiResp.status, await tiResp.text());
     console.error('Generic search error', error);
     return new Response(
       JSON.stringify({ error: 'Something went wrong' }),
