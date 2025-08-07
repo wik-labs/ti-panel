@@ -49,7 +49,15 @@ const tiResp = await fetch(url, {
 }
 
 
-const getToken = async (): Promise<string> => {
+let cachedToken: string | null = null;
+let expiresAt = 0; // timestamp w ms
+
+async function getToken(): Promise<string> {
+  const now = Date.now();
+  if (cachedToken && now < expiresAt) {
+    return cachedToken;
+  }
+
   const clientId = process.env.TI_CLIENT_ID!;
   const clientSecret = process.env.TI_CLIENT_SECRET!;
 
@@ -64,7 +72,16 @@ const getToken = async (): Promise<string> => {
   });
 
   if (!resp.ok) throw new Error('Failed to retrieve access token');
-  const { access_token } = await resp.json();
-  return access_token;
-};
+
+  const { access_token, expires_in } = await resp.json() as {
+    access_token: string;
+    expires_in: number;
+  };
+
+  cachedToken = access_token;
+  // Odejmujemy mały margines (np. 30 s), żeby nie wygasł w trakcie requestu
+  expiresAt = now + expires_in * 1000 - 30 * 1000;
+
+  return cachedToken;
+}
 
