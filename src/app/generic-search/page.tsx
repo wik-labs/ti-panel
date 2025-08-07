@@ -1,12 +1,14 @@
 'use client';
 import { useState } from 'react';
-import Link from 'next/link';
+
+interface Variant {
+  tiPartNumber: string;
+  // …inne pola, jeśli potrzebne
+}
 
 export default function GenericSearchPage() {
   const [generic, setGeneric] = useState('');
-  const [variants, setVariants] = useState<
-    { tiPartNumber: string; [key: string]: any }[]
-  >([]);
+  const [variants, setVariants] = useState<Variant[]>([]);
   const [error, setError] = useState<string|null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -24,7 +26,7 @@ export default function GenericSearchPage() {
     if (!res.ok) {
       setError('No variants found');
     } else {
-      const data: { tiPartNumber: string }[] = await res.json();
+      const data = (await res.json()) as Variant[];
       setVariants(data);
     }
     setLoading(false);
@@ -49,10 +51,9 @@ export default function GenericSearchPage() {
         <ul>
           {variants.map(v => (
             <li key={v.tiPartNumber}>
-              {/* Link do check-product */}
-              <Link href={`/check-product?part=${encodeURIComponent(v.tiPartNumber)}`}>
+              <a href={`/check-product?part=${encodeURIComponent(v.tiPartNumber)}`}>
                 {v.tiPartNumber}
-              </Link>
+              </a>
             </li>
           ))}
         </ul>
