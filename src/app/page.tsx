@@ -10,14 +10,6 @@ export default function HomePage() {
         <ul className="space-y-4">
           <li>
             <Link 
-              href="/check-product" 
-              className="text-lg text-blue-400 hover:underline"
-            >
-              🔍 Check Product
-            </Link>
-          </li>
-          <li>
-            <Link 
               href="/generic-search" 
               className="text-lg text-blue-400 hover:underline"
             >

@@ -1,14 +1,9 @@
-// src/app/check-product/page.tsx
-import React, { Suspense } from 'react';
-import ClientComponent from './ClientComponent';
+import { redirect } from 'next/navigation';
 
-export const dynamic = 'force-dynamic';
-
-export default function CheckProductPage() {
-  return (
-    <Suspense fallback={<p>Loading...</p>}>
-      <ClientComponent />
-    </Suspense>
-  );
+export default function Page({
+  searchParams,
+}: { searchParams: { part?: string } }) {
+  const pn = searchParams?.part;
+  redirect(pn ? `/inventory?pn=${encodeURIComponent(pn)}` : '/inventory');
 }
 
