@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
   try {
     const token = await getToken();
     OpenAPI.BASE    = 'https://transact.ti.com/v2';
-    OpenAPI.HEADERs = { Authorization: `Bearer ${token}` };
+    OpenAPI.HEADERS = { Authorization: `Bearer ${token}` };
 
     const data = await ProductInventoryService.getProductInformation({
       tiPartNumber: partNumber,
