@@ -1,9 +1,11 @@
+// src/app/check-product/page.tsx
 import { redirect } from 'next/navigation';
 
-export default function Page({
-  searchParams,
-}: { searchParams: { part?: string } }) {
-  const pn = searchParams?.part;
-  redirect(pn ? `/inventory?pn=${encodeURIComponent(pn)}` : '/inventory');
+type SearchParams = Promise<Record<string, string | string[] | undefined>>;
+
+export default async function Page({ searchParams }: { searchParams: SearchParams }) {
+  const sp = await searchParams;
+  const part = Array.isArray(sp?.part) ? sp.part[0] : sp?.part;
+  redirect(part ? `/inventory?pn=${encodeURIComponent(part)}` : '/inventory');
 }
 
