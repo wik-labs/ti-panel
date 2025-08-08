@@ -1,4 +1,5 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
+// src/app/api/ti-inventory/route.ts
 import { NextRequest, NextResponse } from 'next/server';
 import { OpenAPI, ProductInventoryService } from '@/ti-inventory-client';
 import { getToken } from '@/lib/ti-oauth';
@@ -11,13 +12,14 @@ export async function POST(req: NextRequest) {
 
   try {
     const token = await getToken();
+
+    // Konfiguracja klienta OpenAPI
     OpenAPI.BASE    = 'https://transact.ti.com/v2';
     OpenAPI.HEADERS = { Authorization: `Bearer ${token}` };
+    // alternatywa: OpenAPI.TOKEN = async () => token;
 
-    const data = await ProductInventoryService.getProductInformation({
-      tiPartNumber: partNumber,
-      currency: 'USD',
-    });
+    // ⬇️ kluczowa zmiana: pierwszy parametr to string (tiPartNumber), drugi to currency
+    const data = await ProductInventoryService.getProductInformation(partNumber, 'USD');
 
     return NextResponse.json(data, { status: 200 });
 
@@ -28,11 +30,11 @@ export async function POST(req: NextRequest) {
       console.error('TI Inventory error (non-Error):', error);
     }
 
-    // tutaj już można bez krępacji użyć `as any` do axios-error
     const status =
       error instanceof Error && (error as any).response?.status
         ? (error as any).response.status
         : 500;
+
     const message =
       error instanceof Error ? error.message : 'TI Inventory request failed';
 
