@@ -1,98 +1,97 @@
 // src/app/api/ti-generic/route.ts
-import { NextRequest } from 'next/server';
+import { NextResponse } from 'next/server';
+import { getAccessToken } from '@/lib/ti-oauth';
 
-interface Variant {
-  tiPartNumber: string;
-  // tu doklej inne pola, które będziesz chciał zwracać
+type TiMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH';
+
+interface ProxyBody {
+  // Pełny TI URL (np. https://api.ti.com/store/inventory-pricing/v1/products/SN74HC00N)
+  url: string;
+  method?: TiMethod;                  // domyślnie GET
+  payload?: unknown;                  // body dla metod != GET
+  headers?: Record<string, string>;   // dodatkowe nagłówki
 }
 
-interface CatalogResponse {
-  products?: Variant[];
+function isTiUrl(url: string) {
+  return /^https:\/\/(api|transact)\.ti\.com\//i.test(url);
 }
 
-let cachedToken = '';
-let expiresAt   = 0;
-
-async function getToken(): Promise<string> {
-  const now = Date.now();
-  if (cachedToken && now < expiresAt) return cachedToken;
-
-  const creds = `${process.env.TI_CLIENT_ID}:${process.env.TI_CLIENT_SECRET}`;
-  const resp = await fetch('https://transact.ti.com/v1/oauth/accesstoken', {
-    method: 'POST',
-    headers: {
-      Authorization: 'Basic ' + Buffer.from(creds).toString('base64'),
-      'Content-Type': 'application/x-www-form-urlencoded',
-    },
-    body: 'grant_type=client_credentials',
-  });
-  if (!resp.ok) throw new Error(`Token fetch failed: ${resp.status}`);
-
-  const body = await resp.json() as { access_token: string; expires_in: number };
-  cachedToken = body.access_token;
-  expiresAt   = now + body.expires_in * 1000 - 30_000;
-  return cachedToken;
-}
-
-export async function POST(req: NextRequest) {
-  // 1) Parsujemy ciało
-  const { generic } = (await req.json()) as { generic?: string };
-  if (!generic) {
-    return new Response(JSON.stringify({ error: 'Missing genericPartNumber' }), {
-      status: 400,
-      headers: { 'Content-Type': 'application/json' },
-    });
+async function withRetry<T>(fn: () => Promise<T>, tries = 3, baseMs = 400): Promise<T> {
+  let lastErr: any;
+  for (let i = 0; i < tries; i++) {
+    try {
+      return await fn();
+    } catch (e: any) {
+      const status = e?.status ?? e?.response?.status;
+      // retry tylko na 429 i 5xx
+      if (status && status !== 429 && status < 500) throw e;
+      await new Promise(r => setTimeout(r, baseMs * Math.pow(2, i)));
+      lastErr = e;
+    }
   }
+  throw lastErr;
+}
 
+export async function GET() {
+  // Żeby nie było 405 przy wejściu z przeglądarki
+  return NextResponse.json({
+    message: 'Use POST to proxy a TI API request.',
+    example: {
+      url: 'https://api.ti.com/store/inventory-pricing/v1/products/SN74HC00N',
+      method: 'GET',
+    },
+  });
+}
+
+export async function POST(req: Request) {
   try {
-    const token = await getToken();
-    const url = `https://transact.ti.com/v2/store/products/catalog?genericPartNumber=${encodeURIComponent(generic)}&currency=USD`;
+    const body = (await req.json()) as ProxyBody;
 
-    const tiResp = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept:        'application/json',
-      },
-    });
-
-    // 2) Obsługa błędów TI
-    if (!tiResp.ok) {
-      const text = await tiResp.text();
-      console.error('TI API error', tiResp.status, text);
-      return new Response(
-        JSON.stringify({ error: 'TI API request failed', status: tiResp.status }),
-        { status: tiResp.status, headers: { 'Content-Type': 'application/json' } }
+    if (!body?.url || !isTiUrl(body.url)) {
+      return NextResponse.json(
+        { ok: false, error: 'Provide a valid TI API https://api.ti.com/... URL' },
+        { status: 400 }
       );
     }
 
-    // 3) Parsujemy odpowiedź jako unknown i redukujemy do Variant[]
-    const raw = (await tiResp.json()) as unknown;
-    let variants: Variant[] = [];
+    const method: TiMethod = (body.method || 'GET').toUpperCase() as TiMethod;
+    const token = await getAccessToken();
 
-    if (Array.isArray(raw)) {
-      // czasami TI zwraca od razu tablicę
-      variants = raw as Variant[];
-    } else if (
-      typeof raw === 'object' &&
-      raw !== null &&
-      'products' in raw &&
-      Array.isArray((raw as CatalogResponse).products)
-    ) {
-      // typowy przypadek: { products: [ ... ] }
-      variants = (raw as CatalogResponse).products!;
+    const baseHeaders: Record<string, string> = {
+      Authorization: `Bearer ${token}`,
+      Accept: 'application/json',
+      ...(body.headers || {}),
+    };
+    const headers =
+      method === 'GET'
+        ? baseHeaders
+        : { ...baseHeaders, 'Content-Type': 'application/json' };
+
+    const res = await withRetry(() =>
+      fetch(body.url, {
+        method,
+        headers,
+        body: method === 'GET' ? undefined : JSON.stringify(body.payload ?? {}),
+      })
+    );
+
+    const text = await res.text();
+    let parsed: any = null;
+    try {
+      parsed = text ? JSON.parse(text) : null;
+    } catch {
+      parsed = { raw: text };
     }
 
-    return new Response(JSON.stringify(variants), {
-      status: 200,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    if (!res.ok) {
+      return NextResponse.json({ ok: false, status: res.status, error: parsed }, { status: res.status });
+    }
 
-  } catch (err) {
-    console.error('Generic search error', err);
-    return new Response(JSON.stringify({ error: 'Something went wrong' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    return NextResponse.json({ ok: true, data: parsed }, { status: 200 });
+  } catch (e: any) {
+    console.error('TI GENERIC ERROR:', e);
+    const status = e?.status ?? e?.response?.status ?? 500;
+    const msg = e?.message ?? 'Unknown error';
+    return NextResponse.json({ ok: false, error: msg }, { status });
   }
 }
-

@@ -39,9 +39,9 @@ export default function RootLayout({
             </Link>
 
             <nav style={{ display: 'flex', gap: 16 }}>
-              <Link href="/inventory">Inventory & Pricing</Link>
+              <Link href="/tools/inventory">Inventory & Pricing</Link>
               <Link href="/generic-search">Generic Search</Link>
-              <Link href="/order">Order</Link>
+              <Link href="/tools/order">Order</Link>
             </nav>
           </div>
         </header>

@@ -1,0 +1,2471 @@
+openapi: 3.0.3
+info:
+  title: TI store order APIs
+  description: TI store order APIs enable authorized customers to systematically create and retrieve store orders. See the full list of <a href="https://e2e.ti.com/search?q=error order&category=forum&group=453_452&faq=true&sort=date%20asc">error codes and detail descriptions</a>.
+  version: 2.0.0
+  contact:
+    name: API Support
+    url: https://www.ti.com/developer-api/support.html
+servers:
+  - url: 'https://transact.ti.com/v2'
+    description: External Production API Gateway
+
+security:
+  - OAuth2: []
+ 
+paths:
+  /store/orders/test:
+    post:
+      tags:
+        - TI store test order
+      description: Create a TI store test order.
+      security:
+        - OAuth2: [] 
+      requestBody:
+        description: 'TI store Test Order Create Request'
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/orderCreate'
+            example:
+              order:
+                checkoutProfileId: "INSERT CHECKOUT PROFILE ID HERE"
+                customerPurchaseOrderNumber: "INSERT PO NUMBER HERE"
+                endCustomerCompanyName: "INSERT END CUSTOMER NAME HERE"
+                expediteShipping: false
+                customerOrderComments:
+                  - message: "MY TEST ORDER"
+                lineItems:
+                  - customerLineItemNumber: 1
+                    tiPartNumber: "NE555DR"
+                    customerPartNumber: "MY CUSTOMER PARTNUMBER"
+                    customReelIndicator: false
+                    quantity: 1
+                    customerItemComments:
+                      - message: "SOME COMMENT GOES HERE"
+                  - customerLineItemNumber: 2
+                    tiPartNumber: "LM358PWR"
+                    quantity: 1              
+      responses:
+        '201':
+          description: Order created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/orderCreateResponse'
+              example: 
+                orderInfo:
+                  orderNumber: "T10000000"
+                  cartId: "C10000000"
+                  checkoutProfileId: "COP_ID-1234"
+                  currencyCode: "USD"
+                  orderDate: "2020-12-31T13:56:00Z"
+                  orderEntry: "API"
+                  customerPurchaseOrderNumber: "PGR - 04202021"
+                  orderStatus: "Submitted"
+                  orderedBy: "TI Electronics Inc"
+                  endCustomerCompanyName: "TI Electronics Inc"
+                  application: "Gaming"
+                  endEquipment: "Gaming controller & peripherals"
+                  intendedForMilitary: false
+                  isProductionOrder: false
+                  totalOrderSummary:
+                    subTotal: 100
+                    estimatedDiscountAmount: 5
+                    estimatedShippingCost: 7
+                    estimatedTaxes: 3
+                    orderTotal: 105.1
+                  discounts:
+                    - type: "Free Shipping"
+                      amount: 5
+                  lineItems: 
+                    - tiLineItemNumber: 1
+                      customerLineItemNumber: 001
+                      tiPartNumber: "NE555DR"
+                      customerPartNumber: "CUS-NE555DR"
+                      tiPartDescription: "4-ch, 2-input, 4.75-V to 5.25-V bipolar NAND gates"
+                      partType: "Integrated Circuit"
+                      htsCode: "HT100"
+                      coCode: "CN"
+                      quantity: 1000
+                      shippedQuantity: ''
+                      unitPrice: 0.1
+                      netPrice: 100.00
+                      dateCode: ""
+                      batchCode: ""
+                      status: "Submitted"
+                      fees:
+                        type: "Custom Reel"
+                        amount: 7
+                      discounts:
+                        - type: "Custom Reel fees waived"
+                          amount: -7
+                      packageInformation:
+                        carrier: "Tape and Reel"
+                        delivery: 
+                          - type: "Custom Reel"
+                            quantity: 100
+                          - type: "Full Reel"
+                            quantity: 1
+                      waiverAvailable: false
+                      trackingAndShipping:
+                        trackingNumbers:
+                        -   shippingFreightAccount: "TI"
+                            shippingFromCountryCode: "US"
+                            serviceLevel: "International Economy"
+                            shipDate: "null"
+                            leg1Carrier: "null"
+                            leg1TrackingUrl: "null"
+                            leg2Carrier: "null"
+                            leg2TrackingUrl: "null"
+                        invoices:
+                          - type: "" 
+                            number: '' 
+                            message: ""
+                        creditMemo:
+                          note: ""
+                          date: ""
+                          multiShipFlag: true
+                      customerItemComments:
+                        - message: "RE: For Manchester Plant"
+                      notifications:
+                        - topic: "Warning"
+                          detail: "You have a ordered a pre-production device"
+                  shippingAddress:
+                    firstName: "Billy"
+                    lastName: "Jones"
+                    company: "Texas Instruments"
+                    line1: "12500 T I Blvd "
+                    line2: ""
+                    city: "Dallas"
+                    stateRegion: "TX"
+                    postalcode: "75243"
+                    regionCode: "US"
+                    region: "United States"
+                    email: "billy-jones@ti.com"
+                    phoneNumber: "(197) 299-52011"
+                    companyUrl: "ti.com"
+                  billingAddress:
+                    firstName: "Billy"
+                    lastName: "Jones"
+                    company: "Texas Instruments"
+                    line1: "12500 T I Blvd "
+                    line2: ""
+                    city: "Dallas"
+                    stateRegion: "TX"
+                    postalcode: "75243"
+                    regionCode: "US"
+                    region: "United States"
+                    email: "billy-jones@ti.com"
+                    phoneNumber: "(197) 299-52011"
+                    companyUrl: "ti.com"
+                  payment: 
+                    type: "Bank Transfer"
+                    method: "Bank Transfer"
+                    bankTransferApproverEmail : "abc@test.com"
+                    details:
+                      beneficiary: "Texas Instruments Incorporated"
+                      routingNumber: "031100209"
+                      swiftCode: "CITIUS33DEL"
+                      bankAddress: "Citibank, N.A., One Penn's Way New Castle DE 19720"
+                      accountNumber: "111100000000000020"
+                      correspondentBankAccount: ""
+                      beneficiaryTaxCode: ""
+                      beneficiaryTaxRegCode: ""
+                  taxInfo:
+                    taxExemption: 'false'
+                  vatDetails:
+                    type: "GST" 
+                    details:
+                    - customerTaxId: "1234567"
+                      customerName: ""
+                      reqistrationAddress: ""
+                      contactPhone: ""
+                      contactMobilePhone: ""
+                      contactEmail: ""
+                      bankName: ""
+                      bankAccountNumber: ""
+                      salesOrderNo: ""
+                      custAlternateName: ""
+                      ceoName: ""
+                      fapiaoType: ""
+                      businessType: ""
+                      customerType: ""
+                      businessClassification: ""
+                      gsnRegistrationAddress: ""
+                      custcountryCode: ""
+                      custcountryName: ""
+                      contactName: ""
+                      enabledFlag: ""
+                      custDepositBankName: ""
+                      custDepositBankNumber: ""
+                      relatedPartyFlag: ""
+                      receiverName: ""
+                      recevierCompany: ""
+                      mailingMobile: ""
+                      postCode: ""
+                      emailAddress: ""
+                      deliveryAddressProvince: ""
+                      deliveryAddressCity: ""
+                      deliveryAddressStreet: ""
+                      createdDatetime: "" 
+                  customerOrderComments:
+                    - message: "Authorized by David M."
+                  notifications:
+                    - topic: "Shipping Method"
+                      message: "Your customer freight account is not available, TI default shipping method was chosen"
+                  errors: ''
+        '400':
+          description: 400 Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errors'
+              example:
+                errors:
+                  - errorCode: TI-API-00400
+                    type: BadRequest
+                    reason: Bad Request
+                    message: Please provide a valid date range
+                  - errorCode: ERR-TICOM-ORDER-API-00400
+                    section: Generic
+                    type: BadRequest
+                    reason: Invalid Syntax in request JSON
+                    message: There is an error in the syntax. Please correct the syntax (i.e extra comma, missing comma, missing bracket, etc.) and try again.                   
+        '401':
+          description: >-
+            Not authorized. OAuth credentials were missing
+            or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errors'
+              example:
+                errors:
+                - errorCode: TI-API-00401
+                  type: Security
+                  reason: "Invalid Credentials"
+                  message: "Provide a valid Bearer token"
+        '404':
+          description: >-
+            Resource not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errors'
+              example: 
+                errors:
+                - errorCode: TI-API-00404
+                  type: ResourceNotFound
+                  section: Path
+                  reason: "Resource could not be found"
+                  message: "Order not found for 'DOESNOTEXIST'"
+        '405':
+          description: >-
+            Method Not Allowed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errors'
+              example: 
+                errors:
+                - errorCode: TI-API-00405
+                  type: Validation
+                  reason: Invalid method
+                  message: "PATCH is not a supported method."
+        '422':
+          description: >-
+            Unprocessable Entity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/orderCreateErrors'
+              example: 
+                errors:
+                - errorCode: ERR-TICOM-ORDER-API-0003
+                  type: ResourceNotFound
+                  section: lineItems
+                  field: tiPartNumber
+                  reason: Resource could not be found
+                  message: "tiPartNumber ('TPS1234') does not exist. Please correct the format or verify that the part number is valid on TI.com and resubmit your request"
+        '429':
+          description: >-
+            Too Many Requests.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errors'
+              example: 
+                errors:
+                - errorCode: TI-API-00429
+                  type: Security
+                  reason: Too many requests
+                  message: Rate Limit Quota Hit.
+        '500':
+          description: System error.  The response should contain error details, including Execution ID, with which TI API support team can investigate.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errors'
+              example:
+                  errors:  
+                  - errorCode: TI-API-00500
+                    type: Unknown
+                    reason: Service unavailable
+                    message: This service is temporarily unavailable. Please contact support.
+  /store/orders:
+    post:
+      tags: 
+        - TI store production order
+      description: Create a TI store production order.
+      security:
+        - OAuth2: [] 
+      requestBody:
+        description: 'TI store order create request'
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/orderCreate'
+            example:
+              order:
+                checkoutProfileId: ""
+                customerPurchaseOrderNumber: ""
+                endCustomerCompanyName: ""
+                expediteShipping: false
+                customerOrderComments:
+                  - message: ""
+                lineItems:
+                  - customerLineItemNumber: 1
+                    tiPartNumber: "NE555DR"
+                    customerPartNumber: ""
+                    customReelIndicator: false
+                    quantity: 1
+                    customerItemComments:
+                      - message: ""
+                  - customerLineItemNumber: 2
+                    tiPartNumber: "LM358PWR"
+                    quantity: 1            
+      responses:
+        '201':
+          description: Order created.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/orderCreateResponse'
+              example: 
+                orderInfo:
+                  orderNumber: "T10000000"
+                  cartId: "C10000000"
+                  checkoutProfileId: "COP_ID-1234"
+                  currencyCode: "USD"
+                  orderDate: "2020-12-31T13:56:00Z"
+                  orderEntry: "API"
+                  customerPurchaseOrderNumber: "PGR - 04202021"
+                  orderStatus: "Submitted"
+                  orderedBy: "TI Electronics Inc"
+                  endCustomerCompanyName: "TI Electronics Inc"
+                  application: "Gaming"
+                  endEquipment: "Gaming controller & peripherals"
+                  intendedForMilitary: false
+                  isProductionOrder: false
+                  totalOrderSummary:
+                    subTotal: 100
+                    estimatedDiscountAmount: 5
+                    estimatedShippingCost: 7
+                    estimatedTaxes: 3
+                    orderTotal: 105.1
+                  discounts:
+                    - type: "Free Shipping"
+                      amount: 5
+                  lineItems: 
+                    - tiLineItemNumber: 1
+                      customerLineItemNumber: 001
+                      tiPartNumber: "NE555DR"
+                      customerPartNumber: "CUS-NE555DR"
+                      tiPartDescription: "4-ch, 2-input, 4.75-V to 5.25-V bipolar NAND gates"
+                      partType: "Integrated Circuit"
+                      htsCode: "HT100"
+                      coCode: "CN"
+                      quantity: 1000
+                      shippedQuantity: ''
+                      unitPrice: 0.1
+                      netPrice: 100.00
+                      dateCode: ""
+                      batchCode: ""
+                      status: "Submitted"
+                      fees:
+                        type: "Custom Reel"
+                        amount: 7
+                      discounts:
+                        - type: "Custom Reel fees waived"
+                          amount: -7
+                      packageInformation:
+                        carrier: "Tape and Reel"
+                        delivery: 
+                          - type: "Custom Reel"
+                            quantity: 100
+                          - type: "Full Reel"
+                            quantity: 1
+                      waiverAvailable: false
+                      trackingAndShipping:
+                        -   shippingFreightAccount: "TI"
+                            shippingFromCountryCode: "US"
+                            serviceLevel: "International Economy"
+                            shipDate: "null"
+                            leg1Carrier: "null"
+                            leg1TrackingUrl: "null"
+                            leg2Carrier: "null"
+                            leg2TrackingUrl: "null"
+                      invoices:
+                          - type: "" 
+                            number: '' 
+                            message: ""
+                      creditMemo:
+                          note: ""
+                          date: ""
+                          multiShipFlag: true
+                      customerItemComments:
+                        - message: "RE: For Manchester Plant"
+                      notifications:
+                        - topic: "Warning"
+                          detail: "You have a ordered a pre-production device"
+                  shippingAddress:
+                    firstName: "Billy"
+                    lastName: "Jones"
+                    company: "Texas Instruments"
+                    line1: "12500 T I Blvd "
+                    line2: ""
+                    city: "Dallas"
+                    stateRegion: "TX"
+                    postalcode: "75243"
+                    regionCode: "US"
+                    region: "United States"
+                    email: "billy-jones@ti.com"
+                    phoneNumber: "(197) 299-52011"
+                    companyUrl: "ti.com"
+                  billingAddress:
+                    firstName: "Billy"
+                    lastName: "Jones"
+                    company: "Texas Instruments"
+                    line1: "12500 T I Blvd "
+                    line2: ""
+                    city: "Dallas"
+                    stateRegion: "TX"
+                    postalcode: "75243"
+                    regionCode: "US"
+                    region: "United States"
+                    email: "billy-jones@ti.com"
+                    phoneNumber: "(197) 299-52011"
+                    companyUrl: "ti.com"
+                  payment: 
+                    type: "Bank Transfer"
+                    method: "Bank Transfer"
+                    bankTransferApproverEmail : "abc@test.com"
+                    details:
+                      beneficiary: "Texas Instruments Incorporated"
+                      routingNumber: "031100209"
+                      swiftCode: "CITIUS33DEL"
+                      bankAddress: "Citibank, N.A., One Penn's Way New Castle DE 19720"
+                      accountNumber: "111100000000000020"
+                      correspondentBankAccount: ""
+                      beneficiaryTaxCode: ""
+                      beneficiaryTaxRegCode: ""
+                  taxInfo:
+                    taxExemption: 'false'
+                  vatDetails:
+                    type: "GST" 
+                    details:
+                    - customerTaxId: "1234567"
+                      customerName: ""
+                      reqistrationAddress: ""
+                      contactPhone: ""
+                      contactMobilePhone: ""
+                      contactEmail: ""
+                      bankName: ""
+                      bankAccountNumber: ""
+                      salesOrderNo: ""
+                      custAlternateName: ""
+                      ceoName: ""
+                      fapiaoType: ""
+                      businessType: ""
+                      customerType: ""
+                      businessClassification: ""
+                      gsnRegistrationAddress: ""
+                      custcountryCode: ""
+                      custcountryName: ""
+                      contactName: ""
+                      enabledFlag: ""
+                      custDepositBankName: ""
+                      custDepositBankNumber: ""
+                      relatedPartyFlag: ""
+                      receiverName: ""
+                      recevierCompany: ""
+                      mailingMobile: ""
+                      postCode: ""
+                      emailAddress: ""
+                      deliveryAddressProvince: ""
+                      deliveryAddressCity: ""
+                      deliveryAddressStreet: ""
+                      createdDatetime: "" 
+                  customerOrderComments:
+                    - message: "Authorized by David M."
+                  notifications:
+                    - topic: "Shipping Method"
+                      message: "Your customer freight account is not available, TI default shipping method was chosen"
+                  errors: ''
+        '401':
+          description: >-
+            Not authorized. OAuth credentials were missing
+            or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errors'
+              example:
+                errors:
+                - errorCode: TI-API-00401
+                  type: Security
+                  reason: "Invalid Credentials"
+                  message: "Provide a valid Bearer token"
+        '404':
+          description: >-
+            Resource not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errors'
+              example: 
+                errors:
+                - errorCode: TI-API-00404
+                  type: ResourceNotFound
+                  section: Path
+                  reason: "Resource could not be found"
+                  message: "Order not found for 'DOESNOTEXIST'"
+        '405':
+          description: >-
+            Method Not Allowed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errors'
+              example: 
+                errors:
+                - errorCode: TI-API-00405
+                  type: Validation
+                  reason: Invalid method
+                  message: "PATCH is not a supported method."
+        '422':
+          description: >-
+            Unprocessable Entity
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/orderCreateErrors'
+              example: 
+                errors:
+                - errorCode: ERR-TICOM-ORDER-API-0003
+                  type: ResourceNotFound
+                  section: lineItems
+                  field: tiPartNumber
+                  reason: Resource could not be found
+                  message: "tiPartNumber ('TPS1234') does not exist. Please correct the format or verify that the part number is valid on TI.com and resubmit your request"
+        '429':
+          description: >-
+            Too Many Requests.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errors'
+              example: 
+                errors:
+                - errorCode: TI-API-00429
+                  type: Security
+                  reason: Too many requests
+                  message: Rate Limit Quota Hit.
+        '500':
+          description: System error.  The response should contain error details, including Execution ID, with which TI API support team can investigate.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errors'
+              example:
+                  errors:  
+                  - errorCode: TI-API-00500
+                    type: Unknown
+                    reason: Service unavailable
+                    message: This service is temporarily unavailable. Please contact support.
+    get:
+      tags:
+        - TI store production order
+      description: >-
+        Retrieves order history for a specific data range.
+      operationId: getOrderHistory
+      security:
+        - OAuth2: [] 
+      parameters:
+        - name: startDate
+          in: query
+          description: >-
+            Start of date range for which to get order history. Limit to 1 year, or 10k records, whichever is less. Defaults to 30 days ago.
+          required: false
+          schema:
+            type: string
+          example: '2022-08-01'
+        - name: endDate
+          in: query
+          description: >-
+            End of date range for which to get order history. Limit to 1 year, or 10k records, whichever is less. Defaults to today.
+          required: false
+          schema:
+            type: string
+          example: '2022-09-01'
+      responses:
+        '200':
+          description: Order list retrieved.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/orderSummary'
+        '400':
+          description: 400 Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errors'
+              example:
+                errors:
+                  - errorCode: TI-API-00400
+                    type: BadRequest
+                    reason: Bad Request
+                    message: Please provide a valid date range
+                  - errorCode: ERR-TICOM-ORDER-API-00400
+                    section: Generic
+                    type: BadRequest
+                    reason: Invalid Syntax in request JSON
+                    message: There is an error in the syntax. Please correct the syntax (i.e extra comma, missing comma, missing bracket, etc.) and try again.                    
+        '401':
+          description: 401 API Token invalid
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errors'
+              example:
+                errors:
+                  - errorCode: TI-API-00401
+                    type: Security
+                    reason: Invalid Credentials
+                    message: Provide a valid Bearer token
+        '404':
+          description: 404 API Endpoint not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errors'
+              example:
+                errors:
+                  - errorCode: TI-API-00404
+                    type: ResourceNotFound
+                    section: Path
+                    reason: Resource could not be found
+                    message: Order not found for 'DOESNOTEXIST'
+        '429':
+          description: 429 Quota Limit Hit
+        '503':
+          description: >-
+            503 System error.  The response should contain error details,
+            including Execution ID, with which TI API support team can
+            investigate.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errors'
+              example:
+                error:
+                  - errorCode: TI-API-00503
+                    type: Unknow
+                    reason: Service unavailable
+                    message: >-
+                      This service is temporarily unavailable. Please contact
+                      support
+  /store/orders/{orderNumber}:
+    get:
+      tags:
+        - TI store production order
+      description: Details for a specific order
+      parameters: 
+        - name: orderNumber
+          in: path
+          required: true
+          schema: 
+            type: string
+      security:
+        - OAuth2: [] 
+      responses:
+        '200':
+          description: Order details retrieved.
+          content:
+            application/json:
+              schema:
+                type: array
+                items: 
+                  $ref: '#/components/schemas/orderSummary'
+              example: 
+                  orderNumber: "T10000000"
+                  cartId: "C10000000"
+                  checkoutProfileId: "COP_ID-1234"
+                  currencyCode: "USD"
+                  orderDate: "2020-12-31T13:56:00Z"
+                  orderEntry: "API"
+                  customerPurchaseOrderNumber: "PGR - 04202021"
+                  orderStatus: "Submitted"
+                  orderedBy: "TI Electronics Inc"
+                  endCustomerCompanyName: "TI Electronics Inc"
+                  application: "Gaming"
+                  endEquipment: "Gaming controller & peripherals"
+                  intendedForMilitary: false
+                  isProductionOrder: false
+                  totalOrderSummary:
+                    subTotal: 100
+                    estimatedDiscountAmount: 5
+                    estimatedShippingCost: 7
+                    estimatedTaxes: 3
+                    orderTotal: 105.1
+                  discounts:
+                    - type: "Free Shipping"
+                      amount: 5
+                  lineItems: 
+                    - tiLineItemNumber: 1
+                      customerLineItemNumber: 001
+                      tiPartNumber: "NE555DR"
+                      customerPartNumber: "CUS-NE555DR"
+                      tiPartDescription: "4-ch, 2-input, 4.75-V to 5.25-V bipolar NAND gates"
+                      partType: "Integrated Circuit"
+                      htsCode: "HT100"
+                      coCode: "CN"
+                      quantity: 1000
+                      shippedQuantity: ''
+                      unitPrice: 0.1
+                      netPrice: 100.00
+                      dateCode: ""
+                      batchCode: ""
+                      status: "Submitted"
+                      fees:
+                        type: "Custom Reel"
+                        amount: 7
+                      discounts:
+                        - type: "Custom Reel fees waived"
+                          amount: -7
+                      packageInformation:
+                        carrier: "Tape and Reel"
+                        delivery: 
+                          - type: "Custom Reel"
+                            quantity: 100
+                          - type: "Full Reel"
+                            quantity: 1
+                      waiverAvailable: false
+                      trackingAndShipping:
+                        trackingNumbers:
+                        -   shippingFreightAccount: "TI"
+                            shippingFromCountryCode: "US"
+                            serviceLevel: "International Economy"
+                            shipDate: ""
+                            leg1MasterTrackingNumber: ""
+                            leg1Carrier: "Fedex"
+                            leg1TrackingNumber: "9261299991099834284833"
+                            leg1TrackingUrl: "https://www.fedex.com/apps/fedextrack/?action=track&trackingnumber=9261299991099834284833"
+                            leg2MasterTrackingNumber: ""
+                            leg2Carrier: "DHL"
+                            leg2TrackingNumber: "GM2951173225174494"
+                            leg2TrackingUrl: "http://www.dhl.com/en/express/tracking.html?AWB=GM2951173225174494&brand=DHL"
+                            waybillNumber: "0420851421"
+                        invoices:
+                          - type: "" 
+                            number: '' 
+                            message: ""
+                        creditMemo:
+                          note: ""
+                          date: ""
+                          multiShipFlag: true
+                      customerItemComments:
+                        - message: "RE: For Manchester Plant"
+                      notifications:
+                        - topic: "Warning"
+                          detail: "You have a ordered a pre-production device"
+                  shippingAddress:
+                    firstName: "Billy"
+                    lastName: "Jones"
+                    company: "Texas Instruments"
+                    line1: "12500 T I Blvd "
+                    line2: ""
+                    city: "Dallas"
+                    stateRegion: "TX"
+                    postalcode: "75243"
+                    regionCode: "US"
+                    region: "United States"
+                    email: "billy-jones@ti.com"
+                    phoneNumber: "(197) 299-52011"
+                    companyUrl: "ti.com"
+                  billingAddress:
+                    firstName: "Billy"
+                    lastName: "Jones"
+                    company: "Texas Instruments"
+                    line1: "12500 T I Blvd "
+                    line2: ""
+                    city: "Dallas"
+                    stateRegion: "TX"
+                    postalcode: "75243"
+                    regionCode: "US"
+                    region: "United States"
+                    email: "billy-jones@ti.com"
+                    phoneNumber: "(197) 299-52011"
+                    companyUrl: "ti.com"
+                  payment: 
+                    type: "Bank Transfer"
+                    method: "Bank Transfer"
+                    bankTransferApproverEmail : "abc@test.com"
+                  taxInfo:
+                    taxExemption: 'false'
+                  vatDetails:
+                    type: "GST" 
+                    details:
+                      customerTaxId: "1234567"
+                      customerName: ""
+                      reqistrationAddress: ""
+                      contactPhone: ""
+                      contactMobilePhone: ""
+                      contactEmail: ""
+                      bankName: ""
+                      bankAccountNumber: ""
+                      salesOrderNo: ""
+                      custAlternateName: ""
+                      ceoName: ""
+                      fapiaoType: ""
+                      businessType: ""
+                      customerType: ""
+                      businessClassification: ""
+                      gsnRegistrationAddress: ""
+                      custcountryCode: ""
+                      custcountryName: ""
+                      contactName: ""
+                      enabledFlag: ""
+                      custDepositBankName: ""
+                      custDepositBankNumber: ""
+                      relatedPartyFlag: ""
+                      receiverName: ""
+                      recevierCompany: ""
+                      mailingMobile: ""
+                      postCode: ""
+                      emailAddress: ""
+                      deliveryAddressProvince: ""
+                      deliveryAddressCity: ""
+                      deliveryAddressStreet: ""
+                      createdDatetime: "" 
+                  customerOrderComments:
+                    - message: "Authorized by David M."
+                  notifications:
+                    - topic: "Shipping Method"
+                      message: "Your customer freight account is not available, TI default shipping method was chosen"
+        '401':
+          description: >-
+            Not authorized. OAuth credentials were missing
+            or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errors'
+              example:
+                errors:
+                - errorCode: TI-API-00401
+                  type: Security
+                  reason: "Invalid Credentials"
+                  message: "Provide a valid Bearer token."
+        '404':
+          description: >-
+            Resource not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errors'
+              example: 
+                errors:
+                - errorCode: TI-API-00404
+                  type: ResourceNotFound
+                  section: Path
+                  reason: "Resource could not be found"
+                  message: "Order not found for 'DOESNOTEXIST'"
+        '405':
+          description: >-
+            Method Not Allowed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errors'
+              example: 
+                errors:
+                - errorCode: TI-API-00405
+                  type: Validation
+                  reason: Invalid method
+                  message: "PATCH is not a supported method."
+        '429':
+          description: >-
+            Too Many Requests.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errors'
+              example: 
+                errors:
+                - errorCode: TI-API-00429
+                  type: Security
+                  reason: Too many requests
+                  message: Rate Limit Quota Hit.
+        '500':
+          description: System error.  The response should contain error details, including Execution ID, with which TI API support team can investigate.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errors'
+              example:
+                  errors:
+                  - errorCode: TI-API-00500
+                    type: Unknown
+                    reason: Service unavailable
+                    message: This service is temporarily unavailable. Please contact support.
+  /store/orders/deliveryCost:
+    parameters:
+      - name: regionCode
+        in: query
+        description: >- 
+          Denotes the 2 character alphabet - ISO code. Example : US
+        required: true
+        schema:
+          type: string
+          example: 'country'    
+      - name: currencyCode
+        in: query
+        description: >- 
+            Denotes the 3 character alphabet ISO currency code. Example : USD
+        required: true
+        schema:
+          type: string
+          example: 'currency'   
+      - name: quantity
+        in: query
+        description: >- 
+            Denotes the quantity. This should be a number greater than zero
+        required: true
+        schema:
+          type: number
+          example: 'quantity' 
+    get:
+      tags:
+        - TI store production order
+      description: Get estimated delivery costs. 
+      security:
+        - OAuth2: [] 
+      responses:
+        '200':
+          description: Get delivery costs.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/deliveryCostDetails'
+              example: 
+                DeliveryCost:
+                  shippingServiceLevel: 'International Economy.'
+                  shippingRate: 4.99.
+                  regionCode: 'US'
+                  currencyCode: 'USD'
+        '401':
+          description: >-
+            Not authorized. OAuth credentials were missing
+            or invalid.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errors'
+              example:
+                errors:
+                - errorCode: TI-API-00401
+                  type: Security
+                  reason: "Invalid Credentials"
+                  message: "Provide a valid Bearer token."
+        '404':
+          description: >-
+            Resource not found.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errors'
+              example: 
+                errors:
+                - errorCode: TI-API-00404
+                  type: ResourceNotFound
+                  section: Path
+                  reason: "Resource could not be found"
+                  message: "Delivery Cost not found for 'DOESNOTEXIST'."
+        '405':
+          description: >-
+            Method Not Allowed.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errors'
+              example: 
+                errors:
+                - errorCode: TI-API-00405
+                  type: Validation
+                  reason: Invalid method
+                  message: "PATCH is not a supported method."
+        '429':
+          description: >-
+            Too Many Requests.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errors'
+              example: 
+                errors:
+                - errorCode: TI-API-00429
+                  type: Security
+                  reason: Too many requests
+                  message: Rate Limit Quota Hit.
+        '500':
+          description: System error.  The response should contain error details, including Execution ID, with which TI API support team can investigate.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/errors'
+              example:
+                  errors:  
+                  - errorCode: TI-API-00500
+                    type: Unknown
+                    reason: Service unavailable
+                    message: This service is temporarily unavailable. Please contact support.
+components:
+  schemas:
+    orderCreate:
+      type: object
+      properties:
+        order:
+          type: object
+          required:
+          - checkoutProfileId
+          - lineItems
+          properties:
+            checkoutProfileId: 
+              type: string
+              description: Customer's checkout profile Id. Available in your myTI customer portal. This is a mandatory field. 
+            customerPurchaseOrderNumber: 
+              type: string
+              description: Customer's purchase order number if applicable. This is a optional field.
+            expediteShipping:
+              type: boolean
+              description: True or False flag to request expedite shipping for TI Shipping options. If true expedited shipping will be used when available. If false economy shipping will be used. Default is False.
+            endCustomerCompanyName: 
+              type: string
+              description: Customer's end customer company name where these materials will be used. This is an optional field.
+            customerOrderComments: 
+              type: array
+              items:
+                type: object
+                properties:
+                  message: 
+                    type: string
+                    maxLength: 60
+                    description: Customer pass-through text. The text will be passed back in the response as is.   
+            lineItems:
+              type: array
+              items:
+                type: object
+                required:
+                - tiPartNumber
+                - quantity
+                properties:
+                  customerLineItemNumber: 
+                    type: string
+                    description: Line item number supplied by customer. This is a optional field.
+                  tiPartNumber: 
+                    type: string
+                    maxLength: 25
+                    description: TI orderable part number. This is a required field.
+                  customerPartNumber: 
+                    type: string
+                    maxLength: 25
+                    description: Customer provided orderable part number. This is a optional field.
+                  customReelIndicator: 
+                    type: boolean
+                    description: Boolean flag of true or false to request Custom Reel. Default is false.
+                  quantity: 
+                    type: integer
+                    description: Customer's requested quantity. This is a required field.    
+                  customerItemComments: 
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        message: 
+                          type: string
+                          maxLength: 60
+                          description: Customer pass-through text. The text will be passed back in the response as is.    
+    orderCreateResponse:
+      type: object
+      properties:
+        orderNumber:
+          type: string
+          description: The unique identifier generated for this order request. This order number should be used for any future references.
+        cartId:
+          type : string
+          description: The unique cartID generated for this order request. This cartId number is useful for troubleshooting errors during order creation.
+        checkoutProfileId: 
+          type: string
+          description: Customer's checkout profile Id used to create the order. This is available in your myTI customer portal.
+        currencyCode: 
+          type: string
+          description: Currency ISO code used for this order. For example, for US order it will be USD.
+        orderDate:
+          type: string
+          description: The date when the order was created. Format for date is yyyy-MM-dd'T'HH:mm:ss'Z'
+        orderEntry:
+          type: string
+          description: The channel through which this order was created. Possible values are API, EDI, TI.com, RPA.
+        customerPurchaseOrderNumber:
+          type: string
+          description: Customer's purchase order number if available. This is an optional field.
+        orderStatus:
+          type: string
+          description: Supplier status of order. Possible values are Processing, Acceptance Required, Created, Submitted, Cancelled, In-Work, Complete.
+        orderedBy:
+          type: string
+          description: The name of the company that this order was placed by.
+        endCustomerCompanyName: 
+          type: string
+          description: Customer's end customer company name where these materials will be used. This information will be available if this was provided in your request.
+        application:
+          type: string
+          description: The name of the application where the materials in the order will be used. This information was provided in your checkout profile setup in myTI.
+        endEquipment:
+          type: string
+          description: The name of the end equipment where the materials in the order will be used. This information was provided in your checkout profile setup in myTI.
+        intendedForMilitary:
+          type: boolean
+          description: Boolean flag of true or false as to whether the materials in the order will be used for any military end use. This was specified in your checkout profile setup in myTI.
+        isProductionOrder:
+          type: boolean
+          description: Boolean flag of true or false. If the order was created using the Test API end point, this value will be false. If the order was created by the Production API, this value will be true.
+        totalOrderSummary: 
+          type: object
+          properties:
+            subTotal: 
+              type: number
+              format: double
+              description: Subtotal for the order.
+            estimatedDiscountAmount: 
+              type: number
+              format: double
+              description: The amount of the discounts if applicable that were applied to this order 
+            estimatedShippingCost: 
+              type: number
+              format: double
+              description: The total shipping cost that was calculated for this order.
+            estimatedInventoryTransferFee:
+              type: number
+              format: double
+              description: Additional inventory transfer fee (if applicable) to accommodate your order to ship from a United States location
+            estimatedTaxes: 
+              type: number
+              format: double
+              description: The total estimated taxes that were calculated for this order. 
+            orderTotal: 
+              type: number
+              format: double
+              description: Total cost of the order including the taxes and shipping costs, and deducting any discounts or coupons.
+        discounts: 
+          type: array
+          items:
+            type: object
+            properties:
+              type: 
+                type: string
+                description: The name of the discount that was applied. For example, custom reel discount.
+              amount: 
+                type: number
+                format: double
+                description: The amount for the discount that was applied.
+        lineItems:
+          type: array
+          items:
+            type: object
+            properties:
+              tiLineItemNumber:
+                type: string
+                description: Line item number generated by Supplier.
+              customerLineItemNumber: 
+                type: string
+                description: Line item number supplied by Customer.
+              tiPartNumber:
+                type: string
+                description: TI Part Number that was used for creating the order. You can find more details by visiting www.ti.com         
+              customerPartNumber:
+                type: string
+                description: Customer provided Part Number.
+              tiPartDescription:
+                type: string
+                description: The short description for this product. You can find more details by visiting ti.com, going to the specific product page, and checking the description section.
+              partType:
+                type: string
+                description: Indicates part type, either an Integrated Circuit(IC) or Tool.
+              htsCode:
+                type: string
+                description: Indicates if this part number has a harmonized tariff code.
+              cooCode:
+                type: string
+                description: Indicate if this part number has certificate of conformance code.
+              quantity:
+                type: number
+                description: The requested quantity specified while placing the order.
+              shippedQuantity:
+                type: number
+                description: The quantity that was shipped.
+              unitPrice:
+                type: number
+                format: double
+                description: The Supplier unit price. You can find more details by visiting ti.com, going to the specific product page for this part number, and checking the pricing section.
+              netPrice:
+                type: number
+                format: double
+                description: The total net price of the product. This was calculated using unitPrice * quantity + fees(if any) - discounts offered(if any).
+              dateCode:
+                type: string
+                description: Date code for Hirel parts.
+              batchCode:
+                type: string
+                description: Batch code if available.
+              status: 
+                type: string
+                description: Indicates the status of the line item. Possible values are 'Submitted' or 'Shipped'. This status can be different from the full order status. Due to system limitations, the status field may be absent or null for test orders.
+              fees: 
+                type: array
+                items:
+                  type: object
+                  properties:
+                    type: 
+                      type: string
+                      description: Indicates type for fees collected. For example - customer reel.
+                    amount: 
+                      type: number
+                      format: double
+                      description: Indicates fees calculated for the service offered. For example there is fees for custom reel.
+              discounts: 
+                type: array
+                items:
+                  type: object
+                  properties:
+                    type: 
+                      type: string
+                      description: Indicates the name of the discount that was applied. For example - custom reel discount.
+                    amount: 
+                      type: number
+                      format: double
+                      description: Indicates the amount for the discount that was applied.
+              packageInformation: 
+                type: object
+                properties:
+                  carrier: 
+                    type: string
+                    description: Indicates the package type used for example - Tape and Reel or Tube or Tray.
+                  delivery:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type: 
+                          type: string
+                          description: Indicates how is the packages delivered whether it is cut-type, full reel, custom reel.
+                        quantity: 
+                          type: number
+                          description: Indicates the quantity that package will be delivered. How many pieces are in cut-tape, full reel, custom reel.
+              waiverAvailable:
+                type: string
+                description: If this part has waiver available it will be "true" else it will be 'false'.
+              trackingAndShipping:
+                type: object
+                properties:
+                    trackingNumbers:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          shippingFreightAccount:
+                            type: string
+                            description: Indicates if we are using TI shipping freight or customer freight account. The possible values are "TI" or "Customer".
+                          shippingFromCountryCode: 
+                            type: string
+                            description: The countrycode from this product will be shipped from.
+                          serviceLevel: 
+                            type: string
+                            description: The service level used by the shipping carrier provider. This could be "International Economy" or " Priority Shipping". 
+                          shipDate: 
+                            type: string
+                            description: The date when the items was shipped. Format for date is yyyy-MM-dd'T'HH:mm:ss'Z'.
+                          leg1masterTrackingNumber:
+                            type: string
+                            description: The master tracking number for this line item if available.
+                          leg1Carrier:
+                            type: string
+                            description: The name of the carrier that is used to ship the product. Example -  "Fedex" or "DHL".
+                          leg1TrackingNumber:
+                            type: string
+                            description: The tracking number that was provided by the shipping carrier.
+                          leg1TrackingUrl:
+                            type: string
+                            description: The tracking URL that was provided by the shipping carrier.
+                          leg2masterTrackingNumber:
+                            type: string
+                            description: This is the master tracking number for this line item if available.
+                          leg2Carrier:
+                            type: string
+                            description: The name of the carrier that is used to ship the product for the scenario where we have another carrier that is doing the second leg of shipment for cross-border shipments. Example - "Fedex" or "DHL"
+                          leg2TrackingNumber:
+                            type: string
+                            description: The tracking number that was provided by the shipping carrier for the scenario where we have another carrier that is doing the second leg of shipment for cross-border shipments.
+                          leg2TrackingUrl:
+                            type: string
+                            description: The tracking URL that was provided by the shipping carrier for the scenario where we have another carrier that is doing the second leg of shipment for cross-border shipments.
+                          waybillNumber:
+                            type: string
+                            description: The waybill number for the shipment. Use this number to retrieve any shipment notifications via the API.
+                    invoices:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          type: 
+                            type: string
+                            description: The type of invoice. This could be financial invoice or commercial invoice.
+                          number: 
+                            type: string
+                            description: The invoice number that was generated. This number can be used for future reference.
+                          message: 
+                            type: string
+                            description: If there are some special instructions the supplier has it will be mentioned here.
+                    creditMemo:
+                      type: object
+                      properties:
+                        note: 
+                          type: string
+                          description: Short description for the credit memo note available.
+                        date: 
+                          type: string
+                          description: Date when the credit memo was created. Format for date is yyyy-MM-dd'T'HH:mm:ss'Z'.
+                        multiShipFlag: 
+                          type: boolean
+                          description: Boolean value of true or false. If this is available it will true else it will be false.
+              notifications:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    topic: 
+                      type: string
+                      description: The name of the category that this notification is applicable. For example - Shipping Method.
+                    detail: 
+                      type: string
+                      description: Provides more details that is applicable to the order. For example if you shipping method option was not available, this notification will include the one what was used for shipping.
+              customerItemComments: 
+                type: array
+                items:
+                  type: object
+                  properties:
+                    message:
+                      type: string
+                      description: Customer pass-through text.
+        shippingAddress: 
+          type: object
+          properties:
+            firstName:
+              type: string
+              description: First name of the address.
+            lastName:
+              type: string
+              description: Last name of the address.
+            company:
+              type: string
+              description: Company name mentioned in the address.
+            addressLine1:
+              type: string
+              description: Address line 1 of the address.
+            addressLine2:
+              type: string
+              description: Address line 1 of the address.
+            city:
+              type: string
+              description: Town or city of the address.
+            stateRegion:
+              type: string
+              description: State or region of the address.
+            postalCode:
+              type: string
+              description: Postal code of the address.     
+            regionCode:
+              type: string
+              description: Two character ISO code of the country.
+            region:
+              type: string
+              description: Country Name of the address.
+            email:
+              type: string
+              description: Email address for the address.
+            phoneNumber:
+              type: string
+              description: Phone number for the address.
+            companyURL:
+              type: string
+              description: URL specified for the address.    
+        billingAddress: 
+          type: object
+          properties:
+            firstName:
+              type: string
+              description: First Name of the address.
+            lastName:
+              type: string
+              description: Last Name of the address.
+            company:
+              type: string
+              description: Company name mentioned in the address.
+            addressLine1:
+              type: string
+              description: Address line 1 of the address.
+            addressLine2:
+              type: string
+              description: Address line 1 of the address.
+            city:
+              type: string
+              description: Town or city of the address.
+            stateRegion:
+              type: string
+              description: State or region of the address.
+            postalCode:
+              type: string
+              description: Postal code of the address.     
+            regionCode:
+              type: string
+              description: Two character ISO code of the country.
+            region:
+              type: string
+              description: Country Name of the address.
+            email:
+              type: string
+              description: Email address for the address.
+            phoneNumber:
+              type: string
+              description: Phone number for the address.
+            companyURL:
+              type: string
+              description: URL specified for the address.    
+        payment:
+          type: object
+          properties:
+            type: 
+              type: string
+              description: The payment type used. This could be 'TI Line of Credit' or '3rd Party Line of Credit' or 'Bank Transfer'.
+            method: 
+              type: string
+              description: The payment method used. For example with '3rd Party Line of Credit' this would be 'Apruve'.
+            bankTranferApproverEmail:
+              type: string
+              description: The email for bank transfer payment that requires an admin email for order approval. This information was provided in the checkout profile ID setup.
+            details:
+                type: object
+                properties:
+                  beneficiary:
+                    type: string
+                    description: Company name to whom the wire is being sent.
+                    example: Texas Instruments Incorporated.
+                  bankRoutingAndTransitNumber:
+                    type: string
+                    description: An ABA number used for wires and electronic automatic clearing house (ACH) transactions such as electronic funds transfer.
+                    example : 031100209
+                  swiftCode:
+                    type: string
+                    description: SWIFT (Society for Worldwide Interbank Financial Telecommunications) code is an 8-11 character long, standard format code that identifies banks and financial institutions worldwide. 
+                    example: CITIUS33DEL
+                  bankAddress:
+                    type: string
+                    description: Bank address of the beneficiary's bank that is going to receive the funds.
+                    example: Citibank, N.A., One Penn's Way New Castle DE 19720.
+                  accountNumber:
+                    type: string
+                    description: The account number in the beneficiary bank that is going to receive the funds. This account number would be specified in the pro-form invoice.
+                    example: 7256000000032. 
+                  correspondentBankAccount:
+                    type: string
+                    description: A correspondent bank is a financial institution authorized to provide services on behalf of another financial institution. This is an optional field.
+                  beneficiaryTaxCode:
+                    type: string
+                    description: The tax code if any that is assigned to the beneficiary. This is an optional field.
+                  beneficiaryTaxRegistrationCode:
+                    type: string
+                    description: The tax registration code if any associated to the beneficiary. This is an optional field.
+        taxInfo:  
+          type: object
+          properties:
+            taxExemption: 
+              type: boolean
+              description:  This is a boolean flag. If you had tax exemption certificate for this order then this value will be 'true' else it will be 'false'. This would have been specified in the checkout profile ID that was used for this order.
+        vatDetails: 
+          type: array
+          items:
+            type: object
+            properties:
+              type: 
+                type: string
+                description: The type of Value-Added-Tax (VAT). Possible values are 'GST', 'PST', and 'QST' for Canada, 'GST' for India, and 'VAT' for China. This value could vary from country to country.
+              detail:
+                type: object
+                properties:
+                  customerTaxID:
+                    type: string
+                    description: Indicates customer taxID number that has been associated to the company name registered with the government.
+                  customerName:
+                    type: string
+                    description:  Indicates the name of the company name that the taxID is associated.
+                  registrationAddress:
+                    type: string
+                    description: The legal address of the company where the taxID is associated.
+                  contactPhone:
+                    type: string
+                    description: The phone number of the company where the taxID is associated.
+                    example: 817-472-6027
+                  contactMobilePhone:
+                    type: string
+                    description: The mobile phone number of the company where the taxID is associated.
+                    example: 682-365-6889
+                  contactEmail:
+                    type: string
+                    description: The email address of the contact person in the company for any tax questions.
+                    example: contact@ti.com
+                  bankName:
+                    type: string
+                    description: The name of the bank that has been registered with company for tax. 
+                    example: Freedom Bank
+                  bankAccountNumber:
+                    type: string
+                    description: The bank account number of company that is registered with the bank name provided.
+                    example: '000114754'
+                  salesOrderNo:
+                    maxLength: 70
+                    minLength: 0
+                    type: string
+                  custAlternateName:
+                    maxLength: 70
+                    minLength: 0
+                    type: string
+                  ceoName:
+                    maxLength: 70
+                    minLength: 0
+                    type: string
+                  fapiaoType:
+                    maxLength: 70
+                    minLength: 0
+                    type: string
+                  businessType:
+                    maxLength: 70
+                    minLength: 0
+                    type: string
+                  customerType:
+                    maxLength: 70
+                    minLength: 0
+                    type: string
+                  businessClassification:
+                    maxLength: 70
+                    minLength: 0
+                    type: string
+                  gsnRegistrationAddress:
+                    maxLength: 70
+                    minLength: 0
+                    type: string
+                  gsnRegistrationAddress2:
+                    maxLength: 70
+                    minLength: 0
+                    type: string
+                  custcountryCode:
+                    maxLength: 70
+                    minLength: 0
+                    type: string
+                  custcountryName:
+                    maxLength: 70
+                    minLength: 0
+                    type: string
+                  contactName:
+                    maxLength: 70
+                    minLength: 0
+                    type: string
+                  enabledFlag:
+                    maxLength: 70
+                    minLength: 0
+                    type: string
+                  custDepositBankName:
+                    maxLength: 70
+                    minLength: 0
+                    type: string
+                  custDepositBankNumber:
+                    maxLength: 70
+                    minLength: 0
+                    type: string
+                  custDepositBankAccountNum:
+                    maxLength: 70
+                    minLength: 0
+                    type: string
+                  relatedPartyFlag:
+                    maxLength: 70
+                    minLength: 0
+                    type: string
+                  receiverName:
+                    maxLength: 70
+                    minLength: 0
+                    type: string
+                  recevierCompany:
+                    maxLength: 70
+                    minLength: 0
+                    type: string
+                  mailingMobile:
+                    maxLength: 70
+                    minLength: 0
+                    type: string
+                  postCode:
+                    maxLength: 70
+                    minLength: 0
+                    type: string
+                  emailAddress:
+                    maxLength: 70
+                    minLength: 0
+                    type: string
+                  deliveryAddressProvince:
+                    maxLength: 70
+                    minLength: 0
+                    type: string
+                  deliveryAddressCity:
+                    maxLength: 70
+                    minLength: 0
+                    type: string
+                  deliveryAddressStreet:
+                    maxLength: 70
+                    minLength: 0
+                    type: string
+                  createdDatetime:
+                    type: string
+                    format: date-time
+        orderComments: 
+          type: array
+          items:
+            type: object
+            properties:
+              message:
+                type: string
+                description: Customer pass-through text.
+        notifications:
+          type: array
+          items:
+            type: object
+            properties:
+              topic: 
+                type: string
+                description: The name of the category that this notification is applicable. For example - Shipping Method.
+              detail: 
+                type: string
+                description: Provides more details that is applicable to the order. For example if you shipping method option was not available, this notification will include the one what was used for shipping.
+    orderCreateErrors:
+      type: object
+      properties:
+        order:
+          type: object
+          properties:
+            orderNumber:
+              type: string
+              description: Customer's unique identifier generated for this order request. This order number should be used for any future references.
+            cartId:
+              type : string
+              description: The unique cartID generated for this order request. This cartId number is useful for troubleshooting errors during order creation.
+            checkoutProfileId: 
+              type: string
+              description: Customer's checkout profile Id used to create the order. This is available in your myTI customer portal.
+            currencyCode: 
+              type: string
+              description: Currency ISO code used for this order. For example for US order it will be USD.
+            orderDate:
+              type: string
+              description: The date when the order was created. Format for date is yyyy-MM-dd'T'HH:mm:ss'Z'.
+            orderEntry:
+              type: string
+              description: The channel through which this order was created. Possible values are API, EDI, TI.com, RPA.
+            customerPurchaseOrderNumber:
+              type: string
+              description: Customer's purchase order number if available. This is an optional field.
+            orderStatus:
+              type: string
+              description: Supplier status of order; possible values are Created, Submitted, Cancelled, In-Work, and Complete.
+            orderPlacedBy:
+              type: string
+              description: The name of the company that this order was placed by.
+            endCustomerCompanyName: 
+              type: string
+              description: Customer's end customer company name where these materials will be used. This information will be available if this was provided in your request.
+            application:
+              type: string
+              description: The name of the application where the materials in the order will be used. This information was provided in your checkout profile setup in myTI.
+            endEquipment:
+              type: string
+              description: The name of the end equipment where the materials in the order will be used. This information was provided in your checkout profile setup in myTI.
+            intendedForMilitary:
+              type: boolean
+              description: Boolean flag of true or false as to whether the materials in the order will be used for any military end use. This was specified in your checkout profile setup in myTI.
+            isProductionOrder:
+              type: boolean
+              description:  Boolean flag of true or false. If the order was created using the Test Order API end point, this will be false. If the order was created using the Production API, this will be set to true.
+            totalOrderSummary: 
+              type: object
+              properties:
+                subTotal: 
+                  type: number
+                  format: double
+                  description: Subtotal for the order.
+                estimatedDiscountAmount: 
+                  type: number
+                  format: double
+                  description: The amount of the discounts if applicable that were applied to this order. 
+                estimatedShippingCost: 
+                  type: number
+                  format: double
+                  description: The total shipping cost that was calculated for this order.
+                estimatedInventoryTransferFee:
+                  type: number
+                  format: double
+                  description: Additional inventory transfer fee (if applicable) to accommodate your order to ship from a United States location
+                estimatedTaxes: 
+                  type: number
+                  format: double
+                  description: The total estimated taxes that was calculated for this order. 
+                orderTotal: 
+                  type: number
+                  format: double
+                  description: Total cost of the order after including the taxes, shipping costs and deducting any discounts or coupons.         
+            discounts: 
+              type: array
+              items:
+                type: object
+                properties:
+                  type: 
+                    type: string
+                    description: Indicates the name of the discount that was applied. For example - custom reel discount.
+                  amount: 
+                    type: number
+                    format: double
+                    description: Indicates the amount for the discount that was applied.
+            lineItems:
+              type: array
+              items:
+                type: object
+                properties:
+                  tiLineItemNumber:
+                    type: string
+                    description: Line item number generated by Supplier.
+                  customerLineItemNumber: 
+                    type: string
+                    description: Line item number supplied by Customer.
+                  tiPartNumber:
+                    type: string
+                    description: TI Part Number that was used for creating the order. You can find more details by visiting www.ti.com.        
+                  customerPartNumber:
+                    type: string
+                    description: Customer provided Part Number.
+                  tiPartDescription:
+                    type: string
+                    description: The short description for this product. You can find more details by visiting ti.com, going to the specific product page for this part number and check the description section.         
+                  partType:
+                    type: string
+                    description: Indicates the part type whether this is an Integrated Circuit(IC) or EVM.
+                  htsCode:
+                    type: string
+                    description: Indicates if this part number has a harmonized tariff code.
+                  cooCode:
+                    type: string
+                    description: Indicates if this part number has certificate of conformance code.
+                  quantity:
+                    type: number
+                    description: The requested quantity specified while placing the order.
+                  shippedQuantity:
+                    type: number
+                    description: The quantity that was shipped.
+                  unitPrice:
+                    type: number
+                    format: double
+                    description: The Supplier unit price. You can find more details by visiting ti.com, going to the specific product page for this part number, and checking the pricing section.
+                  netPrice:
+                    type: number
+                    format: double
+                    description: The total net price of the product. This was calculated using unitPrice * quantity + fees(if any) - discounts offered(if any)
+                  dateCode:
+                    type: string
+                    description: Date code for Hirel parts
+                  batchCode:
+                    type: string
+                    description: Batch code if available.
+                  status: 
+                    type: string
+                    description: Indicates the status of the line item. Possible values are 'Submitted' or 'Shipped'. This status can be different from the full order status.
+                  fees: 
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type: 
+                          type: string
+                          description: Indicates type for the fees collected. For example - customer reel.
+                        amount: 
+                          type: number
+                          format: double
+                          description: Indicates fees calculated for the service offered. For example there is fees for custom reel.
+                  discounts: 
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        type: 
+                          type: string
+                          description: Indicates name of the discount that was applied. For example - custom reel discount.
+                        amount: 
+                          type: number
+                          format: double
+                          description: Indicates amount for the discount that was applied.
+                  packageInformation: 
+                    type: object
+                    properties:
+                      carrier: 
+                        type: string
+                        description: Indicates the package type used for example - Tape and Reel or Tube or Tray.
+                      delivery:
+                        type: array
+                        items:
+                          type: object
+                          properties:
+                            type: 
+                              type: string
+                              description: Indicates how packages are delivered whether it is cut-type, full reel, custom reel.
+                            quantity: 
+                              type: integer
+                              description: This indicates that quantity that package will be delivered. How many pieces are in cut-tape, full reel, custom reel.
+                  waiverAvailable:
+                    type: boolean
+                    description: If this part has waiver available it will be "true" else it will be 'false'.
+                  trackingAndShipping:
+                    type: object
+                    properties:
+                        trackingNumbers:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              shippingFreightAccount:
+                                type: string
+                                description: Indicates if we are using TI shipping freight or customer freight account. The possible values are "TI" or "Customer".
+                              shippingFromCountryCode: 
+                                type: string
+                                description: The countrycode from where this product will be shipped from.
+                              serviceLevel: 
+                                type: string
+                                description: The service level used by the shipping carrier provider. This could be "International Economy" or " Priority Shipping".
+                              shipDate: 
+                                type: string
+                                description: This indicates the date when the items was shipped. Format for date is yyyy-MM-dd'T'HH:mm:ss'Z'.
+                              leg1masterTrackingNumber:
+                                type: string
+                                description: The master tracking number for this line item if available.
+                              leg1Carrier:
+                                type: string
+                                description: The name of the carrier that is used to ship the product. Example -  "Fedex" or "DHL"
+                              leg1TrackingNumber:
+                                type: string
+                                description: The tracking number that was provided by the shipping carrier.
+                              leg1TrackingUrl:
+                                type: string
+                                description: The tracking URL that was provided by the shipping carrier.
+                              leg2masterTrackingNumber:
+                                type: string
+                                description: The master tracking number for this line item if available.
+                              leg2Carrier:
+                                type: string
+                                description: The name of the carrier that is used to ship the product for the scenario where we have another carrier that is doing the second leg of shipment for cross-border shipments. Example - "Fedex" or "DHL"
+                              leg2TrackingNumber:
+                                type: string
+                                description: The tracking number that was provided by the shipping carrier for the scenario where we have another carrier that is doing the second leg of shipment for cross-border shipments.
+                              leg2TrackingUrl:
+                                type: string
+                                description: The tracking URL that was provided by the shipping carrier for the scenario where we have another carrier that is doing the second leg of shipment for cross-border shipments.
+                              waybillNumber:
+                                type: string
+                                description: The waybill number for the shipment. Use this number to retrieve any shipment notifications via the API.
+                        invoices:
+                          type: array
+                          items:
+                            type: object
+                            properties:
+                              type: 
+                                type: string
+                                description:  The type of invoice. This could be financial invoice or commercial invoice.
+                              number: 
+                                type: number
+                                description: The invoice number that was generated. This number can be used for future reference.
+                              message: 
+                                type: string
+                                description: If there are some special instructions the supplier has it will be mentioned here.
+                        creditMemo:
+                          type: object
+                          properties:
+                            note: 
+                              type: string
+                              description: Short description for the credit memo note available.
+                            date: 
+                              type: string
+                              description: Date when the credit memo was created. Format for date is yyyy-MM-dd'T'HH:mm:ss'Z'.
+                            multiShipFlag: 
+                              type: boolean
+                              description: Boolean value of true or false. If this is available it will true else it will be false.
+                  notifications:
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        topic: 
+                          type: string
+                          description: The name of the category that this notification is applicable. For example - Shipping Method.
+                        detail: 
+                          type: string
+                          description: Provides more details that is applicable to the order. For example if you shipping method option was not available, this notification will include the one what was used for shipping.
+                  customerItemComments: 
+                    type: array
+                    items:
+                      type: object
+                      properties:
+                        message:
+                          type: string
+                          description: Customer pass-through text.
+            shippingAddress: 
+              type: object
+              properties:
+                firstName:
+                  type: string
+                  description: First name of the address.
+                lastName:
+                  type: string
+                  description: Last name of the address.
+                company:
+                  type: string
+                  description: Company name mentioned in the address.
+                addressLine1:
+                  type: string
+                  description: Address line 1 of the address.
+                addressLine2:
+                  type: string
+                  description: Address line 1 of the address.
+                city:
+                  type: string
+                  description: Town or city of the address.
+                stateRegion:
+                  type: string
+                  description: State or region of the address.
+                postalCode:
+                  type: string
+                  description: Postal code of the address.     
+                regionCode:
+                  type: string
+                  description: Two character ISO code of the country.
+                region:
+                  type: string
+                  description: Country name for the address.
+                email:
+                  type: string
+                  description: Email address for the address.
+                phoneNumber:
+                  type: string
+                  description: Phone number for the address.
+                companyURL:
+                  type: string
+                  description: URL specified for the address.    
+            billingAddress: 
+              type: object
+              properties:
+                firstName:
+                  type: string
+                  description: First name of the address.
+                lastName:
+                  type: string
+                  description: Last name of the address.
+                company:
+                  type: string
+                  description: Company name mentioned in the address.
+                addressLine1:
+                  type: string
+                  description: Address line 1 of the address.
+                addressLine2:
+                  type: string
+                  description: Address line 1 of the address.
+                city:
+                  type: string
+                  description: Town or city of the address.
+                stateRegion:
+                  type: string
+                  description: State or Region name of the address.
+                postalCode:
+                  type: string
+                  description: Postal code of the address.     
+                regionCode:
+                  type: string
+                  description: Two character ISO code of the country.
+                region:
+                  type: string
+                  description: Country name of the address.
+                email:
+                  type: string
+                  description: Email address for the address.
+                phoneNumber:
+                  type: string
+                  description: Phone number for the address.
+                companyURL:
+                  type: string
+                  description: URL specified for the address.    
+            payment:
+              type: object
+              properties:
+                type: 
+                  type: string
+                  description: Indicates the payment type used. This could be "TI Line of Credit" or "3rd Party Line of Credit" or 'Bank Tranfer'.
+                method: 
+                  type: string
+                  description: Indicates the payment method used. For example with '3rd Party Line of Credit' this would be 'Apruve'.
+                bankTranferApproverEmail:
+                  type: string
+                  description: The email for bank transfer payment that require an admin email for order approval. This information was provided in the checkout profile ID setup.
+                details:
+                    type: object
+                    properties:
+                      beneficiary:
+                        type: string
+                        description: Company name to whom the wire is being sent.
+                        example: Texas Instruments Incorporated.
+                      bankRoutingAndTransitNumber:
+                        type: string
+                        description: An ABA number used for wires and electronic automatic clearing house (ACH) transactions such as electronic funds transfer.
+                        example : 031100209
+                      swiftCode:
+                        type: string
+                        description: SWIFT (Society for Worldwide Interbank Financial Telecommunications) code is an 8-11 character long, standard format code that identifies banks and financial institutions worldwide. 
+                        example: CITIUS33DEL
+                      bankAddress:
+                        type: string
+                        description: Bank address of the beneficiary's bank that is going to receive the funds.
+                        example: Citibank, N.A., One Penn's Way New Castle DE 19720.
+                      accountNumber:
+                        type: string
+                        description: The account number in the beneficiary bank that is going to receive the funds. This account number would be specified in the pro-form invoice.
+                        example: 7256000000032. 
+                      correspondentBankAccount:
+                        type: string
+                        description: A correspondent bank is a financial institution authorized to provide services on behalf of another financial institution. This is an optional field.
+                      beneficiaryTaxCode:
+                        type: string
+                        description: The tax code if any that is assigned to the beneficiary. This is an optional field.
+                      beneficiaryTaxRegistrationCode:
+                        type: string
+                        description: The tax registration code if any associated to the beneficiary. This is an optional field.
+            taxInfo:  
+              type: object
+              properties:
+                taxExemption: 
+                  type: boolean
+                  description: This is a boolean flag. If you had tax exemption certificate for this order then this value will be 'true' else it will be 'false'. This would have been specified in the check profile ID setup that was used for this order.
+            vatDetails: 
+              type: array
+              items:
+                type: object
+                properties:
+                  type: 
+                    type: string
+                    description: This indicates the type of VAT. Possible values are 'GST', 'PST' 'QST' for Canada. 'GST' for India. 'VAT' for China. This value could vary from country to country.
+                  detail:
+                    type: object
+                    properties:
+                      customerTaxID:
+                        type: string
+                        description: Indicates customer taxID number that has been associated to the company name registered with the government.
+                      customerName:
+                        type: string
+                        description:  Name of the company the taxID is associated.
+                      registrationAddress:
+                        type: string
+                        description: The legal address of the company where the taxID is associated.
+                      contactPhone:
+                        type: string
+                        description: The phone number of the company where the taxID is associated.
+                        example: 817-472-6027
+                      contactMobilePhone:
+                        type: string
+                        description: The mobile phone number of the company where the taxID is associated.
+                        example: 682-365-6889
+                      contactEmail:
+                        type: string
+                        description: The email address of the contact person in the company for any tax questions.
+                        example: contact@ti.com
+                      bankName:
+                        type: string
+                        description: The name of the bank that has been registered with company for tax. 
+                        example: Freedom Bank
+                      bankAccountNumber:
+                        type: string
+                        description: The bank account number of company that is registered with the bank name provided.
+                        example: '000114754'
+                      salesOrderNo:
+                        maxLength: 70
+                        minLength: 0
+                        type: string
+                      custAlternateName:
+                        maxLength: 70
+                        minLength: 0
+                        type: string
+                      ceoName:
+                        maxLength: 70
+                        minLength: 0
+                        type: string
+                      fapiaoType:
+                        maxLength: 70
+                        minLength: 0
+                        type: string
+                      businessType:
+                        maxLength: 70
+                        minLength: 0
+                        type: string
+                      customerType:
+                        maxLength: 70
+                        minLength: 0
+                        type: string
+                      businessClassification:
+                        maxLength: 70
+                        minLength: 0
+                        type: string
+                      gsnRegistrationAddress:
+                        maxLength: 70
+                        minLength: 0
+                        type: string
+                      gsnRegistrationAddress2:
+                        maxLength: 70
+                        minLength: 0
+                        type: string
+                      custcountryCode:
+                        maxLength: 70
+                        minLength: 0
+                        type: string
+                      custcountryName:
+                        maxLength: 70
+                        minLength: 0
+                        type: string
+                      contactName:
+                        maxLength: 70
+                        minLength: 0
+                        type: string
+                      enabledFlag:
+                        maxLength: 70
+                        minLength: 0
+                        type: string
+                      custDepositBankName:
+                        maxLength: 70
+                        minLength: 0
+                        type: string
+                      custDepositBankNumber:
+                        maxLength: 70
+                        minLength: 0
+                        type: string
+                      custDepositBankAccountNum:
+                        maxLength: 70
+                        minLength: 0
+                        type: string
+                      relatedPartyFlag:
+                        maxLength: 70
+                        minLength: 0
+                        type: string
+                      receiverName:
+                        maxLength: 70
+                        minLength: 0
+                        type: string
+                      recevierCompany:
+                        maxLength: 70
+                        minLength: 0
+                        type: string
+                      mailingMobile:
+                        maxLength: 70
+                        minLength: 0
+                        type: string
+                      postCode:
+                        maxLength: 70
+                        minLength: 0
+                        type: string
+                      emailAddress:
+                        maxLength: 70
+                        minLength: 0
+                        type: string
+                      deliveryAddressProvince:
+                        maxLength: 70
+                        minLength: 0
+                        type: string
+                      deliveryAddressCity:
+                        maxLength: 70
+                        minLength: 0
+                        type: string
+                      deliveryAddressStreet:
+                        maxLength: 70
+                        minLength: 0
+                        type: string
+                      createdDatetime:
+                        type: string
+                        format: date-time
+            orderComments: 
+              type: array
+              items:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    description: Customer pass-through text.
+            notifications:
+              type: array
+              items:
+                  type: object
+              properties:
+                  topic: 
+                    type: string
+                    description: This is the name of the category that this notification is applicable. For example - Shipping Method.
+                  detail: 
+                    type: string
+                    description: This would provide more details about that is applicable to the topic. For example if you shipping method option was not available we will update the one what was used for shipping.
+        errors:
+          type: array
+          items:
+            type: object
+            properties:
+              section:
+                type: string
+                description: Indicates the section where the error was noticed for example - shipping, billing, orderInfo, LineitemMessage.
+              field:
+                type: string
+                description: Indicates the exact field where the error is related to within the section.
+              errorType:
+                type: string
+                description: Indicates the type of error for example Validation error.
+              errorCode:
+                type: string
+                description: Indicates a error code that was assigned to trouble-shoot with TI support team.
+              reason:
+                type: string
+                description: Indicates the reason for this error.
+              message:
+                type: string
+                description: Indicates message to the customer to take the appropriate action.
+              data: 
+                type: array
+                items:
+                  type: object
+                  properties:
+                    customerLineItemNumber:
+                      type: string
+                      description: Line item number supplied by Customer.
+                    tiPartNumber:
+                      type: string
+                      description: TI Part Number that was used for creating the order. You can find more details by visiting www.ti.com. 
+                    quantity:
+                      type: number
+                      description: The requested quantity specified while placing the order.
+                    availableQuantity:
+                      type: number
+                      description: The quantity that is available.
+                    limit:
+                      type: string
+                      description: The maximum order quantity for some low inventory parts.
+                    waitPeriod:
+                      type: string
+                      description: The number of days your company must wait before purchasing an order limited part again.
+    orderSummary:
+      type: object
+      properties:
+        orderNumber:
+          pattern: '[T]{0,1}[0-9]{8,10}'
+          type: string
+          description: The order number
+          example: T12345678
+        orderDate:
+          pattern: yyyy-MM-dd
+          type: string
+          description: The date the order was made
+          example: '2022-03-19'
+        currencyCode:
+          type: string
+          description: Currency fields
+          example: USD
+        orderEntry:
+          type: string
+          description: The channel through which this order was created. Possible values are API, EDI, TI.com, RPA.
+          example: API
+        customerPurchaseOrderNumber:
+          type: string
+          description: >-
+            Customer's purchase order number - usually the PONumber without 1
+            and 0's
+          example: '312316756'
+        orderStatus:
+          type: string
+          description: Customer's order's status
+          example: Shipped
+        orderedBy:
+          type: string
+          description: The customer who placed the order
+          example: George Washington
+        isProductionOrder:
+          type: boolean
+          description: Is this intended for production?
+          example: true
+        totalOrderSummary: 
+          type: object
+          properties:
+            subTotal: 
+              type: number
+              format: double
+              description: Subtotal for the order.
+            estimatedDiscountAmount: 
+              type: number
+              format: double
+              description: The amount of the discounts if applicable that were applied to this order. 
+            estimatedShippingCost: 
+              type: number
+              format: double
+              description: The total shipping cost that was calculated for this order.
+            estimatedInventoryTransferFee:
+              type: number
+              format: double
+              description: Additional inventory transfer fee (if applicable) to accommodate your order to ship from a United States location
+            estimatedTaxes: 
+              type: number
+              format: double
+              description: The total estimated taxes that was calculated for this order. 
+            orderTotal: 
+              type: number
+              format: double
+              description: Total cost of the order after including the taxes, shipping costs and deducting any discounts or coupons.      
+        shippingAddress: 
+          type: object
+          properties:
+            firstName:
+              type: string
+              description: First name of the address.
+            lastName:
+              type: string
+              description: Last name of the address.
+            company:
+              type: string
+              description: Company name mentioned in the address.
+            addressLine1:
+              type: string
+              description: Address line 1 of the address.
+            addressLine2:
+              type: string
+              description: Address line 1 of the address.
+            city:
+              type: string
+              description: Town or city of the address.
+            stateRegion:
+              type: string
+              description: State or region of the address.
+            postalCode:
+              type: string
+              description: Postal code of the address.     
+            regionCode:
+              type: string
+              description: Two character ISO code of the country.
+            region:
+              type: string
+              description: Country name of the address.
+            email:
+              type: string
+              description: Email address for the address.
+            phoneNumber:
+              type: string
+              description: Phone number for the address.
+            companyURL:
+              type: string
+              description: URL specified for the address.    
+        payment:
+          type: object
+          properties:
+            type: 
+              type: string
+              description: Indicates the payment type used. This could be "TI Line of Credit" or "3rd Party Line of Credit" or 'Bank Transfer'.
+            method: 
+              type: string
+              description: Indicates the payment method used. For example with '3rd Party Line of Credit' this would be 'Apruve'.
+            bankTranferApproverEmail:
+              type: string
+              description: This is used for bank transfer payment where an admin email is required for order approval.This information was provided in the check profile ID setup.
+        numberOfLineItems:
+          type: integer
+          format: int32
+        hasOrderAdjustments:
+          type: boolean
+    deliveryCostDetails:
+      type: object
+      properties:
+        shippingRate:
+          type: string
+          description: The approximate shipping rates we have based upon the quantity. These rates cannot be guaranteed and can change at any time without any notice.
+        shippingServiceLevel:
+          type: string
+          description: The shipping service level that TI can offer. For example - International economy.
+        regionCode:
+          type: string
+          description: This is a 2 character alphabetic, country ISO code. Example - US.  
+        currencyCode:
+          type: string
+          description: This is a 3 character alphabetic, currency ISO code. Example - USD.
+    errors:
+      type: array
+      items:
+        type: object
+        properties:
+          section:
+            type: string
+            description: Indicates the section where the error was found, for example, shipping or billing.
+          field:
+            type: string
+            description: Indicates the exact field where the error is related to within the section.
+          errorType:
+            type: string
+            description: Indicates the type of error, for example, Validation Error.
+          errorCode:
+            type: string
+            description: Indicates an error code that was assigned to trouble-shoot with TI support team.
+          reason:
+            type: string
+            description: Indicates the reason for this error.
+          message:
+            type: string
+            description: Indicates suggested action to take to correct the error.
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      description: 'This API uses OAuth 2 with the Client Credentials: https://api-portal.ti.com/order-api-authentication'
+      flows:
+        clientCredentials: 
+          tokenUrl: 'https://transact.ti.com/v1/oauth'
+          refreshUrl: 'https://transact.ti.com/v1/oauth'
+          scopes: {}

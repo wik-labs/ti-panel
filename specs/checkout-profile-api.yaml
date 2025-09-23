@@ -1,0 +1,575 @@
+openapi: 3.0.3
+info:
+  title: TI store checkout profile API
+  description: >-
+    APIs for retrieving company checkout profile summary and complete checkout profiles.
+  version: 2.0.0
+  contact:
+    name: API Support
+    url: https://www.ti.com/developer-api/support.html
+servers:
+  - url: https://transact.ti.com/v2
+    description: External Production API Gateway
+security:
+  - OAuth2: []
+paths:
+  /checkoutprofiles:
+    get:
+      description: Retrieves a  summary list of Checkout Profiles which can be used in the TI Order create API.
+      tags:
+        - Checkout Profile List
+      operationId: Checkout Profiles summary
+      security:
+        - OAuth2: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutProfileListSummary'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError2'
+  /checkoutprofiles/{checkoutProfileId}:
+   get:
+      description: Retrieves the details for a specific Checkout Profile.
+      tags:
+        - Checkout Profile Detail
+      operationId: Checkout Profile Details
+      security:
+        - OAuth2: []
+      parameters:
+        - name: checkoutProfileId
+          in: path
+          description: >-
+            Customer's checkout profile Id. Available in your myTI customer portal or from the checkout Profile List API.
+          required: true
+          schema:
+            type: string
+            example: E2601443D1744A66E0538520BB8B67AD
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CheckoutProfileApiResponse'
+        '400':
+          $ref: '#/components/responses/UnprocessableEntity'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotAllowed'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+components:
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      description: >-
+        This API uses OAuth 2 with Client Credentials. See
+        https://api-portal.ti.com/order-api-authentication
+      flows:
+        clientCredentials:
+          refreshUrl: https://transact.ti.com/v1/oauth
+          tokenUrl: https://transact.ti.com/v1/oauth
+          scopes: {}
+  responses:
+    UnprocessableEntity:
+      description: 400 Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            errors:
+              - errorCode: ERR-TICOM-COP-API-1001
+                type: Validation
+                section: Path
+                message: The path parameter checkoutProfileId cannot be null or empty.
+              - errorCode: ERR-TICOM-COP-API-1002
+                type: Validation
+                section: Path
+                message: The path parameter must contain checkoutprofile Id which should be uppercase alphnumeric and have a maximum length of 32.
+    Unauthorized:
+      description: 401 Not authorized. OAuth credentials were missing or invalid
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            errors:
+              - errorCode: TI-API-00401
+                type: Security
+                reason: Invalid Credentials
+                message: Provide a valid Bearer token
+    NotFound:
+      description: 404 Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            errors:
+              - errorCode: ERR-TICOM-COP-API-00404
+                type: ResourceNotFound
+                section: Path
+                reason: Resource could not be found
+                message: Checkout Profile <ID> could not found.Please verify with checkout Profile List API or the myTI customer portal.
+    MethodNotAllowed:
+      description: 405 Method Not Allowed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            errors:
+              - errorCode: TI-API-00405
+                type: Validation
+                reason: Invalid method
+                message: PATCH is not a supported method.
+    TooManyRequests:
+      description: 429 Too Many Requests
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            errors:
+              - errorCode: TI-API-00429
+                type: Security
+                reason: Too many requests
+                message: Rate Limit Quota Hit.
+    InternalServerError:
+      description: 500 Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            errors:
+              - errorCode: TI-API-00500
+                type: Unknown
+                reason: Service unavailable
+                message: >-
+                  This service is temporarily unavailable. Please contact
+                  support.
+    InternalServerError2:
+      description: 500 Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            errors:
+              - errorCode: TI-API-00500
+                type: Unknown
+                reason: Service unavailable
+                message: >-
+                  This service is temporarily unavailable. Please contact
+                  support.
+              - errorCode: ERR-TICOM-COP-API-00501
+                type: Unknown
+                reason: Service interal error
+                message: >-
+                  This API has set up issues. Please contact customer support(https://api-portal.ti.com/support).
+  schemas:
+    Error:
+      title: Error
+      description: Standard error response
+      type: object
+      properties:
+        errors:
+          type: array
+          description: Error messages
+          items:
+            type: object
+            properties:
+              errorCode:
+                type: string
+                description: Unique code for the error returned.
+                example: ERR-TICOM-COP-API-1001
+              type:
+                type: string
+                description: Classification of the error.
+                example: Validation
+              section:
+                type: string
+                description: >-
+                  Used primarily for validation errors. Provides the section of the request where the violating field can be found.
+              field:
+                type: string
+                description: The name of the field that failed validation, if applicable.
+                example: checkoutProfileId
+              reason:
+                type: string
+                description: >-
+                  The reason for the error. Details why the request was rejected.
+                example: Invalid checkoutProfileId.
+              message:
+                type: string
+                description: >-
+                  Details of the specific error and the actions to take to resolve. For validation errors, this will include details such as the value that was invalid as well as the constraints.
+                example: >-
+                  Checkout Profile not found.
+    CheckoutProfileListSummary:
+      title: CheckoutProfileListSummary
+      description: list of checkout profile summary
+      type: object
+      properties:
+        checkoutProfileId:
+          type: string
+          description: Id of checkout profile to retrieve.
+        checkoutProfileName:
+          type: string
+          description: Checkout Profile Name.
+        shippingAddressName:
+          type: string
+          description: >-
+            Name of the shipping address.
+        billingAddressName:
+          type: string
+          description: Name of the shipping address.
+      example:
+        - checkoutProfileId: "FB605223183920CBE0537420BB8BA28D"
+          checkoutProfileName: "Company Factory 1 - US"
+          shippingAddressName: "US Factory 1"
+          billingAddressName: "US HQ"
+        - checkoutProfileId: "FD2191680D8A7DACE0537420BB8BE3E5"
+          checkoutProfileName: "Company Factory 1 - Philippines"
+          shippingAddressName: "Philippines Factory"
+          billingAddressName: "US HQ"
+    AddressResponse:
+      type: object
+      properties:
+        addressName:
+          type: string
+          example: API ordering
+          description : Name of the address
+        createdBy:
+          type: string
+          example: john@ti.com
+          description: Email address of the creator
+        modifiedBy:
+          type: string
+          example: john@ti.com
+          description: Email address of the person who last modified the address
+        firstName:
+          type: string
+          example: John
+          description: First Name of the address.
+        lastName:
+          type: string
+          example: Doe
+          description: Last Name of the address.
+        addressLine1:
+          type: string
+          example: 7th St.Fort Worth
+          description: Address line 1 of the address.
+        addressLine2:
+          type: string
+          example: 301, Building-A
+          description: Address line 2 of the address.
+        city:
+          type: string
+          example: Dallas
+          description: Town or city of the address.
+        stateRegion:
+          type: string
+          example: Texas
+          description: State or region of the address.
+        postalCode:
+          type: string
+          example: '76107'
+          description: Postal code of the address.
+        regionCode:
+          type: string
+          example: US
+          description: Two character ISO code of the country.
+        phoneNumber:
+          type: string
+          example: (817)877-1977
+          description: Phone number for the address.
+        email:
+          type: string
+          example: john@ti.com
+          description: Email address
+        company:
+          type: string
+          example: Texas Instruments Inc.
+          description: Company name mentioned in the address.
+        companyUrl:
+          type: string
+          example: www.ti.com
+          description: URL specified for the address.
+    CheckoutProfileApiResponse:
+      type: object
+      properties:
+        checkoutProfileId:
+          type: string
+          example: FD2191680D8A7DACE0537420BB8BE3E5
+        adminName:
+          type: string
+          example: admin
+          description: Name of the admin of the company account
+        adminEmail:
+          type: string
+          example: john@ti.com
+          description: Email address of the admin of the company account
+        checkoutProfileName:
+          type: string
+          example: US Factory 1
+          description : Name of the checkout profile.
+        shipping:
+          $ref: '#/components/schemas/AddressResponse'
+        billing:
+          $ref: '#/components/schemas/AddressResponse'
+        createdBy:
+          type: string
+          example: john@ti.com
+          description: Email address of the person who created the checkout profile.
+        modifiedBy:
+          type: string
+          example: john@ti.com
+          description: Email address of the person who last modifed the checkout profile.
+        applicationName:
+          type: string
+          example: Portable Electronics
+          description: The name of the application where the materials in the order will be used.
+        endEquipmentName:
+          type: string
+          example: AC analog input module
+          description: The name of the end equipment where the materials in the order will be used.
+        isMilitary:
+          type: boolean
+          example: false
+          description: Boolean flag of true or false as to whether the materials in the order will be used for any military end use.
+        isBusiness:
+          type: boolean
+          example: true
+        isTaxExempt:
+          type: boolean
+          example: false
+        profileCurrencyCode:
+          type: string
+          example: USD
+        profileRegionCode:
+          type: string
+          example: US
+        importerOfRecord:
+          type: string
+          example: TI
+        incoterm:
+          type: string
+          example: DDP
+        useFreeTiShipping:
+          type: boolean
+          example: true
+        isCoCPrintRequired:
+          type: boolean
+          example: false
+        taxes:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaxResponse'
+        tiShippingServiceLevel:
+          type: string
+          example: Priority
+        tiShippingAgreementAcceptedBy:
+          type: string
+          example: john@ti.com
+        tiShippingAgreementAcceptedDate:
+          type: string
+          description: The timestamp on which the TI shipping agreement was accepted , in the format YYYY-MM-DD'T'HH24:mm:ss+ZZZZ
+          format : date-time
+          example: "2022-06-29T03:34:25+0000"
+        freightAssocs:
+          type: array
+          items:
+            $ref: '#/components/schemas/FreightAssocResponse'
+        paymentMethod:
+          $ref: '#/components/schemas/PaymentMethodResponse'
+    DocumentResponse:
+      type: object
+      properties:
+        documentNumber:
+          type: string
+        documentName:
+          type: string
+          example: registration1.pdf
+        documentType:
+          type: string
+          example: Business Registration Document
+    FreightResponse:
+      type: object
+      properties:
+        carrier:
+          type: string
+          example: FEDEX
+        accountNumberLast4:
+          type: string
+          example: "*********************4564"
+    FreightAssocResponse:
+      type: object
+      properties:
+        pdc:
+          type: string
+          example: 1585
+        serviceLevel:
+          type: string
+          example: IP
+        carrierCode:
+          type: string
+          example: FDXIP
+        carrierName:
+          type: string
+          example: FedEx Inter Priority
+        freight:
+          $ref: '#/components/schemas/FreightResponse'
+    PaymentMethodResponse:
+      type: object
+      properties:
+        name:
+          type: string
+          example: New Payment
+        email:
+          type: string
+          example: john@ti.com
+        accountNumberLast4:
+          type: string
+          example: "****************************1401"
+        description:
+          type: string
+        type:
+          type: string
+          example: Apruve
+    TaxResponse:
+      type: object
+      properties:
+        createdBy:
+          type: string
+          example: Nick
+        modifiedBy:
+          type: string
+          example: John
+        company:
+          type: string
+          example: Texas Instruments Inc.
+        companyUrl:
+          type: string
+          example: ti.com
+        email:
+          type: string
+          example: john@ti.com
+        vatAddressId:
+          type: string
+          example: 235678
+        phoneNumber:
+          type: string
+          example: (817)877-1977
+        address1:
+          type: string
+        address2:
+          type: string
+        city:
+          type: string
+        regionState:
+          type: string
+        zip:
+          type: string
+          example: 76107
+        regionCode:
+          type: string
+          example: DE
+        taxRegionCode:
+          type: string
+          example: DE
+        taxRegionStateCode:
+          type: string
+          example: CA-AB
+        tax1Type:
+          type: string
+          example: GST
+        tax1Id:
+          type: string
+        tax2Type:
+          type: string
+          example: PAN
+        tax2Id:
+          type: string
+          example: 123974
+        currencyCode:
+          type: string
+          example: USD
+        invoiceTitle:
+          type: string
+          example: Partner Group Limited.
+        taxRegistrationNumber:
+          type: string
+          example: 90030104MA4TDJJ092
+          description: Indicates customer tax number that has been associated to the company name registered with the government.
+        registrationAddress:
+          type: string
+          example: 198, Jinshi 7th Road, Hi-tech Industrial Park
+          description: The legal address of the company where the taxID is associated.
+        bankName:
+          type: string
+          example: Citibank
+          description: The name of the bank that has been registered with company for tax.
+        bankAccountNumberLast4:
+          type: string
+          example: "**************2880"
+          description: The bank account number of company that is registered with the bank name provided.This field is masked with only last 4 digits. being visible.
+        ceoName:
+          type: string
+        businessType:
+          type: string
+          example: Business
+        businessClassification:
+          type: string
+          example: EWFEF
+        taxInvoiceTypeName:
+          type: string
+          example: NON INDIVIDUAL
+        recepientName:
+          type: string
+          example: John
+        termsAcceptedOn:
+          type: string
+          format: date-time
+          description: The timestamp on which the terms were accepted , in the format YYYY-MM-DD'T'HH24:mm:ss+ZZZZ
+        termsAcceptedBy:
+          type: string
+          example: John
+        vatInvoicePhoneRegionCode:
+          type: string
+          example: +86
+        vatInvoicePhoneNumber:
+          type: string
+          example: 67519523
+        gstnvalidated:
+          type: string
+          example: IN
+        withHoldingAgent:
+          type: boolean
+          example: false
+        pezaCustomer:
+          type: boolean
+          example: false
+        isSezUnitDeveloper:
+          type: boolean
+          example: false
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/DocumentResponse'
