@@ -1,0 +1,20 @@
+{
+  "shipments": [
+    {
+      "carrier": "FedEx",
+      "serviceLevel": "International priority",
+      "shipDate": "2025-09-23T12:00:00Z",
+      "trackingNumbers": [
+        {
+          "shippingFromCountryCode": "Singapore",
+          "serviceLevel": "International priority",
+          "shipDate": "2025-09-23T12:00:00Z",
+          "masterTracking": "1234-5678-9012",
+          "leg1Carrier": "FedEx",
+          "leg1Tracking": "1234-5678-9012",
+          "leg1TrackingURL": "https://www.fedex.com/fedextrack/?trknbr=123456789012"
+        }
+      ]
+    }
+  ]
+}

@@ -1,10 +1,6 @@
-import Link from 'next/link';
+import TopBar from './_components/TopBar';
 
-export default function RootLayout({
-  children,
-}: {
-  children: React.ReactNode;
-}) {
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body
@@ -15,42 +11,9 @@ export default function RootLayout({
           color: '#eaeaea',
         }}
       >
-        <header
-          style={{
-            borderBottom: '1px solid #222',
-            position: 'sticky',
-            top: 0,
-            background: '#0b0b0b',
-            zIndex: 10,
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              maxWidth: 1100,
-              margin: '0 auto',
-              padding: '12px 16px',
-            }}
-          >
-            <Link href="/" style={{ fontWeight: 700, textDecoration: 'none', color: '#eaeaea' }}>
-              TI-Panel
-            </Link>
-
-            <nav style={{ display: 'flex', gap: 16 }}>
-              <Link href="/tools/inventory">Inventory & Pricing</Link>
-              <Link href="/generic-search">Generic Search</Link>
-              <Link href="/tools/order">Order</Link>
-            </nav>
-          </div>
-        </header>
-
-        <main style={{ maxWidth: 1100, margin: '0 auto', padding: '16px' }}>
-          {children}
-        </main>
+        <TopBar />
+        <main style={{ maxWidth: 1100, margin: '0 auto', padding: '16px' }}>{children}</main>
       </body>
     </html>
   );
 }
-

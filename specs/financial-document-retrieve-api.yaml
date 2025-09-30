@@ -1,0 +1,850 @@
+openapi: 3.0.3
+info: 
+  title: Financial document retrieve API
+  description: This API allows a user to retrieve financial invoice information.
+  contact:
+    name: API Support
+    url: https://api-portal.ti.com/support
+  version: 2.0.0
+servers:
+  - url: 'https://transact.ti.com/v2'
+    description: External Production API Gateway
+
+security:
+- OAuth2: []
+
+tags:
+- name: Financial document (test)
+- name: Financial document
+paths: 
+  /store/orders/{orderNumber}/financial-documents/{financialDocumentNumber}/test:
+    get:
+      description: Retreive a test financial document details for the given sales order
+        number and Supplier document number placed by the Customer. (For test, the financialDocumentNumber
+        should always be passed as - 5999999999)
+      tags: 
+        - Financial document (test)
+      security:
+        - OAuth2: [] 
+      parameters:
+      - name: orderNumber
+        in: path
+        description: Supplier sales order number
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+        example: T10999999
+      - name: financialDocumentNumber
+        in: path
+        description: Supplier document number
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+          default: 5999999999
+        example: 5999999999   
+      - name: requestPDF
+        in: query
+        description: "If a value of true was passed in RequestPDF, the response would\
+          \ contain base64 encoded string of PDF document in field documentPDF"
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: boolean
+          example: true
+          enum:
+          - true
+          - false
+          default: false
+        example: true
+      responses:
+        '200':
+          description: Request processed successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceRetrieveResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'        
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotSupported'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/TemporarilyUnavailable'  
+  /store/orders/{orderNumber}/financial-documents/{financialDocumentNumber}:
+    get:
+      description: Retreive a financial document details for the given sales order
+        number and Supplier document number placed by the Customer.
+      tags: 
+        - Financial document
+      security:
+        - OAuth2: [] 
+      parameters:
+      - name: orderNumber
+        in: path
+        description: Supplier sales order number
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+        example: T10999999
+      - name: financialDocumentNumber
+        in: path
+        description: TI financial document number
+        required: true
+        style: simple
+        explode: false
+        schema:
+          type: string
+        example: 5999999999        
+      - name: requestPDF
+        in: query
+        description: "If a value of true was passed in RequestPDF, the response would\
+          \ contain base64 encoded string of PDF document in field documentPDF"
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: boolean
+          example: true
+          enum:
+          - true
+          - false
+          default: false
+        example: true
+      responses:
+        '200':
+          description: Request processed successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvoiceRetrieveResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'        
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotSupported'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/TemporarilyUnavailable'                        
+components:
+  responses:
+    Okay:
+      description: Normal Response
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/InvoiceRetrieveResponse'
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+              example:
+                errors:
+                - errorCode: ERR-TICOM-FIR-API-0400
+                  type: Validation
+                  section: Path
+                  message: The fields orderNumber, financialDocumentNumber cannot be null or empty.
+                - errorCode: ERR-TICOM-FIR-API-0400
+                  type: Validation
+                  section: Path                
+                  message: orderNumber - 87644567 must begin with 'T'.
+                - errorCode: ERR-TICOM-ASNR-API-0400
+                  type: Validation
+                  section: Path 
+                  message: orderNumber - T1234567 must be 9 characters in length.
+                - errorCode: ERR-TICOM-FIR-API-0400
+                  type: Validation
+                  section: Path                
+                  message: financialDocumentNumber - T04987431234 must be numeric.
+                - errorCode: ERR-TICOM-FIR-API-0400
+                  type: Validation
+                  section: Path 
+                  message: financialDocumentNumber - 65482544 must be 10 characters in length.   
+                - errorCode: ERR-TICOM-FIR-API-0400
+                  type: Validation
+                  section: QueryParameter 
+                  message: requestPDF - X must be true or false.                                            
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            errors:
+            - errorCode: TI-API-0401
+              type: Security
+              reason: Invalid Credentials                
+              message: "Your Access Token has Expired. Please refresh your token.\
+                  \ For more information, please see: https://api-portal.ti.com/oauth-setup/"             
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:                    
+            errors:
+            - errorCode: TI-API-0404
+              type: ResourceNotFound
+              reason: Invalid path
+              message: No API endpoint ('/order/T2345/financial-document/053434') found. See documentation of this API.
+            - errorCode: ERR-TICOM-FIR-API-0404
+              type: ResourceNotFound
+              reason: Resource not found.
+              message: Verify the orderNumber and financialDocumentNumber and resubmit the request.                           
+    MethodNotSupported:
+      description: Method Not Supported
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:                    
+            errors:
+            - errorCode: TI-API-0405
+              type: ResourceNotFound
+              reason: Invalid method
+              message: POST is not a supported method. See documentation around this API at https://api-portal.ti.com/apis.              
+    TooManyRequests:
+      description: Too Many Requests
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:                    
+            errors:
+            - errorCode: TI-API-0429
+              type: Security
+              reason: Too many requests - Access Temporarily Restricted
+              message: Rate Limit Quota exceeded. Please reduce the rate of requests. If issue persists, please contact support (https://api-portal.ti.com/support).               
+    InternalServerError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:                
+            errors:
+            - errorCode: TI-API-0500
+              type: Unknown
+              reason: Backend System Error
+              message: System error occurred, please contact support.
+            - errorCode: ERR-TICOM-FIR-API-0500
+              type: Unknown
+              reason: Backend System Error
+              message: "System error occurred, please contact support. Execution ID: execution-304816a1-a1e1-41e7-9214-59e872a3eeb5-2020.05.19"                   
+    TemporarilyUnavailable:
+      description: Temporarily Unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            errors:
+            - errorCode: TI-API-0503
+              type: Unknown
+              reason: Service unavailable                
+              message: This service is temporarily unavailable. Please contact support.
+            - errorCode: ERR-TICOM-FIR-API-ERP-0503
+              type: Unknown
+              reason: Service unavailable                
+              message: This service is temporarily unavailable. Please contact support.      
+            - errorCode: ERR-TICOM-FIR-API-STR-0503
+              type: Unknown
+              reason: Service unavailable                
+              message: This service is temporarily unavailable. Please contact support.                                    
+  securitySchemes:
+    OAuth2:
+      type: oauth2
+      description: >-
+        This API uses OAuth 2 with Client Credentials. See https://api-portal.ti.com/order-api-authentication
+      flows:
+        clientCredentials: 
+          refreshUrl: 'https://transact.ti.com/v1/oauth'
+          tokenUrl : 'https://transact.ti.com/v1/oauth'
+          scopes: {}
+  schemas:
+    InvoiceRetrieveResponse:
+      type: object
+      properties:
+        orderNumber:
+          type: string
+          description: Supplier sales order number 
+          example: T10999999      
+        financialDocumentNumber:
+          type: string
+          description: Supplier document number
+          example: 5999999999
+        requestPDF:
+          type: string
+          description: Whether to include the base64 encoded PDF
+          example: true       
+        totalNumberOfDocuments:
+          type: string
+          description: Total number of documents that matched the input criteria.  Max
+            number of documents that can be returned for a single request is 100.
+          example: 1
+        documents:
+          type: array
+          items:
+            $ref: '#/components/schemas/Document'
+    Document:
+      type: object
+      properties:
+        documentType:
+          type: string
+          description: Supplier document type
+          example: INVOICE
+        financialDocumentNumber:
+          type: string
+          description: Supplier document number
+          example: 5999999999
+        documentCreatedDate:
+          type: string
+          description: Supplier document creation date (YYYY-MM-DD)
+          example: 2022-08-01
+        status:
+          type: string
+          description: Supplier document status
+          example: CLEARED
+        currencyCode:
+          type: string
+          description: Supplier document currency
+          example: CNY
+        customerPurchaseOrderNumber:
+          type: string
+          description: Customer PO number
+          example: PGR - 04202021
+        customerReferenceNumber:
+          type: string
+          description: Customer reference number
+          example: 0614107545
+        letterOfCredit:
+          type: string
+          description: Customer letter of credit
+          example: 
+        shippingType:
+          type: string
+          description: Supplier shipping type
+          example:
+        grossWeight:
+          type: string
+          description: Supplier gross weight
+          example: 3.232
+        netWeight:
+          type: string
+          description: Supplier net weight
+          example: 3.232
+        weightUnit:
+          type: string
+          description: Supplier weight unit
+          example: GRM
+        carrier:
+          type: string
+          description: Supplier carrier
+          example: S F EXPRESS
+        taxExemptionNumber:
+          type: string
+          description: Customer tax exemption number
+        documentPDF:
+          type: string
+          description: Supplier document in PDF (base64 encode string)
+          example: 
+        documentValue:
+          $ref: '#/components/schemas/DocumentValue'
+        salesOrder:
+          $ref: '#/components/schemas/SalesOrder'
+        bankInformation:
+          $ref: '#/components/schemas/BankInformation'
+        VATInformation:
+          $ref: '#/components/schemas/VATInformation'
+        paymentTerms:
+          $ref: '#/components/schemas/PaymentTerms'
+        creditManager:
+          $ref: '#/components/schemas/CreditManager'
+        delivery:
+          $ref: '#/components/schemas/Delivery'
+        waybill:
+          $ref: '#/components/schemas/Waybill'
+        partners:
+          type: array
+          items:
+            $ref: '#/components/schemas/Partner'
+        headerPassthrough:
+          type: array
+          items:
+            $ref: '#/components/schemas/HeaderPassthrough'
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Item'
+    DocumentValue:
+      type: object
+      properties:
+        shippingCosts:
+          type: string
+          description: Supplier shipping costs
+          example:  0.00
+        handlingCosts:
+          type: string
+          description: Supplier handling costs
+          example: 0.00
+        freight:
+          type: string
+          description: Supplier freight
+          example: 
+        totalAmountSubjectToVAT:
+          type: string
+          description: Supplier total amount subject to VAT
+          example: 
+        totalAmountSubjectToZeroVAT:
+          type: string
+          description: Supplier total amount subject to zero VAT
+          example: 
+        totalVATAmount:
+          type: string
+          description: Supplier total VAT amount
+          example: 
+        totalTaxAmount:
+          type: string
+          description: Supplier total tax amount
+          example: 
+        totalGSTAmount:
+          type: string
+          description: Supplier total GST amount
+          example: 
+        totalAmount:
+          type: string
+          description: Supplier total amount
+          example: 69.28
+    SalesOrder:
+      type: object
+      properties:
+        orderNumber:
+          type: string
+          description: TI sales order number
+          example: T02281839
+        lineItemNumber:
+          type: string
+          description: TI sales order item number
+          example: 000010
+        customerPurchaseOrderIdentifier:
+          type: string
+          description: Customer PO number
+          example: PO1234
+        customerPurchaseOrderLineItemNumber:
+          type: string
+          description: Customer PO item
+          example: 
+        purchaseOrderDate:
+          type: string
+          description: Customer PO date
+          example: 2020-01-01
+        referenceDocumentNumber:
+          type: string
+          description: Supplier order reference number
+          example: 
+    BankInformation:
+      type: object
+      properties:
+        bankSWIFTCode:
+          type: string
+          description: Customer bank SWIFT code
+          example: CITISWIFTCODE
+        bankRoutingNumber:
+          type: string
+          description: Customer bank routing number
+          example: 123456789
+        bankAccountNumber:
+          type: string
+          description: Customer bank account number
+          example: 9876543 77777
+    VATInformation:
+      type: object
+      properties:
+        senderVATRegistrationNumber:
+          type: string
+          description: Customer sender VAT registration number
+          example: 
+        soldToVATRegistrationNumber:
+          type: string
+          description: Customer sold-to VAT registration number
+          example: 
+        shipToVATRegistrationNumber:
+          type: string
+          description: Customer ship-to VAT registration number
+          example: 
+        billToVATRegistrationNumber:
+          type: string
+          description: Customer bill-to VAT registration number
+          example: 
+        fiscalRepresentativeVATRegistrationNumber:
+          type: string
+          description: Supplier fiscal representative VAT registration number
+          example: 
+        GSTNumber:
+          type: string
+          description: Supplier GST number
+          example: MN00000000
+        VATText:
+          type: string
+          description: Supplier VAT text
+          example: 
+        VATCurrencyText:
+          type: string
+          description: Supplier VAT currency text
+          example: 
+        VATTotalText:
+          type: string
+          description: Supplier VAT total text
+          example: 
+        GST:
+          type: array
+          items:
+            $ref: '#/components/schemas/GST'
+    GST:
+      type: object
+      properties:
+        GSTText:
+          type: string
+          description: Supplier GST text
+          example: GST @ 0%
+        GSTAmount:
+          type: string
+          description: Supplier GST amount
+          example: 0.00
+        GSTCurrency:
+          type: string
+          description: Supplier GST currency
+          example: INR
+    PaymentTerms:
+      type: object
+      properties:
+        incoterms1:
+          type: string
+          description: Supplier Incoterms 1
+          example: TERMS1
+        incoterms2:
+          type: string
+          description: Supplier Incoterms 2
+          example: TERMS1
+        incotermsText:
+          type: string
+          description: Supplier Incoterms text
+          example: 
+        termsOfDelivery:
+          type: string
+          description: Supplier terms of delivery
+          example: SHIPPING TERMS
+        termsOfPayment:
+          type: string
+          description: Supplier terms of payment
+          example: Net XX Days from Invoice Date
+        paymentTermsText:
+          type: array
+          items:
+            $ref: '#/components/schemas/PaymentTermsText'
+    PaymentTermsText:
+      type: object
+      properties:
+        paymentTermsText:
+          type: string
+          description: Supplier payment terms text
+          example: Net XX Days from Invoice Date
+    CreditManager:
+      type: object
+      properties:
+        creditManagerName:
+          type: string
+          description: Supplier credit manager name
+          example: J Smith
+        creditManagerTelephone:
+          type: string
+          description: Supplier credit manager telephone
+          example: (222) 233-5555
+        creditManagerFax:
+          type: string
+          description: Supplier credit manager fax
+          example: (222) 345-6666
+        creditManagerEmail:
+          type: string
+          description: Supplier credit manager email
+          example: jsmith@testemail.com
+    Delivery:
+      type: object
+      properties:
+        deliveryNumber:
+          type: string
+          description: Supplier delivery number
+          example: 5474899152
+        deliveryLineItemNumber:
+          type: string
+          description: Supplier delivery item
+          example: 000010
+        deliveryDate:
+          type: string
+          description: Supplier delivery date
+          example: 2022-08-01
+        goodsMovementDate:
+          type: string
+          description: Supplier goods movement date
+          example: 2022-08-01
+        grossWeight:
+          type: string
+          description: Supplier gross weight
+          example: 3.232
+        netWeight:
+          type: string
+          description: Supplier net weight
+          example: 3.232
+    Waybill:
+      type: object
+      properties:
+        waybillNumber:
+          type: string
+          description: Supplier waybill number
+          example: 0429999420
+        containerIdentifier:
+          type: string
+          description: Supplier container ID
+          example: SF7000599991917
+        carrierReference:
+          type: string
+          description: Supplier carrier reference
+          example: SF1020122227011
+        numberOfBoxes:
+          type: string
+          description: Supplier number of boxes
+          example: 1
+    Partner:
+      type: object
+      properties:
+        partnerTypeDescription:
+          type: string
+          description: Partner type description. The values can be Sender, Remit To, Sold-to Party, Bill-to Party, Ship-to Party
+          example: Bill-to Party
+        partnerIdentifier:
+          type: string
+          description: Partner identifier
+          example: 
+        name1:
+          type: string
+          description: Name 1
+          example: TEST CUSTOMER
+        name2:
+          type: string
+          description: Name 2
+          example: "ATTN: ACCOUNTS PAYABLE DEPT"
+        name3:
+          type: string
+          description: Name 3
+          example: 
+        name4:
+          type: string
+          description: Name 4
+          example: 
+        streetAddress:
+          type: string
+          description: Street address
+          example: 123 MAIN BLVD
+        city:
+          type: string
+          description: City
+          example: SAN FRANCISCO
+        stateRegion:
+          type: string
+          description: State  
+          example: CA         
+        county:
+          type: string
+          description: County code
+          example: 
+        postalCode:
+          type: string
+          description: Postal code
+          example:
+        countryCode:
+          type: string
+          description: Country
+          example: US
+    HeaderPassthrough:
+      type: object
+      properties:
+        headerPassthroughText:
+          type: string
+          description: Customer header pass-through text
+          example: EEQ=Glass break detector
+    Item:
+      type: object
+      properties:
+        lineItemNumber:
+          type: string
+          description: Supplier item number
+          example: 000010
+        tiPartNumber:
+          type: string
+          description: Supplier material
+          example: SM1234 
+        customerPartNumber:
+          type: string
+          description: Customer part number
+          example: CPN5678
+        customerProductIdentifier:
+          type: string
+          description: Customer material number
+          example:
+        tiPartDescription:
+          type: string
+          description: Supplier material description
+          example: SM1234 material description
+        quantity:
+          type: string
+          description: Supplier item quantity
+          example: 2.000
+        unitPrice:
+          type: string
+          description: Supplier unit price
+          example: 34.639
+        netPrice:
+          type: string
+          description: Supplier net item value
+          example: 69.28
+        grossWeight:
+          type: string
+          description: Supplier gross weight
+          example: 3.232
+        netWeight:
+          type: string
+          description: Supplier net weight
+          example: 3.232
+        commercialInvoiceNumber:
+          type: string
+          description: Supplier commercial invoice number
+          example: 5234567890
+        salesOrder:
+          $ref: '#/components/schemas/SalesOrder'
+        delivery:
+          $ref: '#/components/schemas/Delivery'
+        itemVAT:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemVAT'
+        itemPassthrough:
+          type: array
+          items:
+            $ref: '#/components/schemas/ItemPassthrough'
+        additionalData:
+          type: array
+          items:
+            $ref: '#/components/schemas/AdditionalData'
+        discountPromotionInformation:
+          type: array
+          items:
+            $ref: '#/components/schemas/DiscountPromotionInformation'
+    ItemVAT:
+      type: object
+      properties:
+        taxIndicator:
+          type: string
+          description: Supplier tax indicator
+          example: 01
+        taxRate:
+          type: string
+          description: Supplier tax rate
+          example: 6.250
+        taxAmount:
+          type: string
+          description: Supplier tax amount
+          example: 0.00
+        taxJurisdiction:
+          type: string
+          description: Supplier tax jurisdiction
+          example: USTX0000000000
+        supplierTaxDescription:
+          type: string
+          description: Supplier tax description
+          example: Tax Description
+    ItemPassthrough:
+      type: object
+      properties:
+        itemPassthroughText:
+          type: string
+          description: Customer item pass-through text
+          example: N1=ST 182255
+    AdditionalData:
+      type: object
+      properties:
+        additionalDataText:
+          type: string
+          description: Supplier additional data text
+          example: Any additional supplier comments
+    DiscountPromotionInformation:
+      type: object
+      properties:
+        discountPromotionText:
+          type: string
+          description: Supplier discount promotion text
+          example: Subtotal
+        discountPromotionAmount:
+          type: string
+          description: Supplier discount promotion amount
+          example: 0.00
+        discountPromotionCurrency:
+          type: string
+          description: Supplier discount promotion currency
+          example: INR
+    Error:
+      type: object
+      description: Standard error message
+      properties:
+        errors:
+          type: array
+          items:  
+            $ref: '#/components/schemas/ErrorDetail'
+    ErrorDetail:
+      type: object
+      properties:
+        errorCode:
+          type: string
+          description: Unique code for the error returned.
+          example: ERR-TICOM-FIR-API-0400
+        type:
+          type: string 
+          description: Classification of the error.
+          example: Validation           
+        section:
+          type: string
+          description: Provides the section of the request violating field can be found, if applicable.
+          example: shipFromDetails          
+        field:
+          type: string 
+          description: Name of the field that failed validation, if applicable.
+          example: orderNumber             
+        reason:
+          type: string 
+          description: The reason for the error. Details why the request was rejected.
+          example: Invalid orderNumber                                              
+        message:
+          type: string
+          description: Details of the specific error and the actions to take to resolve.
+          example: orderNumber is not valid. Please provide a valid orderNumber          

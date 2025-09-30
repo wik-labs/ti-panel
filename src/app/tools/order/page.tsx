@@ -1,610 +1,779 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { getCart, setCart, clearCart } from '@/lib/cart';
 
-/** ─── Types (luźne – API TI bywa różne zależnie od konta) ─── */
-type Profile = {
+type CartItemBasic = { tiPartNumber: string; quantity: number };
+
+type PriceBreak = { priceBreakQuantity: number; price: number };
+type PricingTier = { currency: string; priceBreaks: PriceBreak[] };
+type InventoryPart = {
+  tiPartNumber: string;
+  description?: string;
+  quantity?: number; // available to ship
+  pricing?: PricingTier[];
+  minimumOrderQuantity?: number;
+  standardPackQuantity?: number;
+};
+
+type CartLine = CartItemBasic & {
+  description?: string;
+  available?: number;
+  unit?: number;
+  net?: number;
+  currency?: string;
+  leadWeeks?: number;
+};
+
+type CheckoutProfile = {
   checkoutProfileId: string;
   checkoutProfileName?: string;
   shippingAddressName?: string;
   billingAddressName?: string;
 };
 
-type CreateResp = {
-  ok: boolean;
-  result?: any;
-  error?: any;
-  meta?: { endpoint?: string };
-};
-
-type HistoryItem = {
-  orderNumber: string;
-  date: string;
-  total?: number;
-  currency?: string;
-};
-
-/** ─── Helpers ─── */
-const MODE =
-  process.env.NEXT_PUBLIC_TI_ORDER_MODE ??
-  process.env.TI_ORDER_MODE ??
-  'test';
-
-function currencyFmt(n?: number, ccy = 'USD') {
-  try {
-    return new Intl.NumberFormat(undefined, {
-      style: 'currency',
-      currency: ccy || 'USD',
-      maximumFractionDigits: 2,
-    }).format(n ?? 0);
-  } catch {
-    return `${n?.toFixed?.(2) ?? n} ${ccy || ''}`.trim();
-  }
-}
-
-function safeParse(s?: string) {
-  try {
-    return s ? JSON.parse(s) : null;
-  } catch {
-    return null;
-  }
-}
-
-async function copy(text: string) {
-  try {
-    await navigator.clipboard.writeText(text);
-  } catch {}
-}
-
-/** ─── UI atoms ─── */
-function Badge({ children, tone = 'zinc' }: { children: React.ReactNode; tone?: 'green'|'red'|'zinc'|'amber'|'blue' }) {
-  const map: Record<string, string> = {
-    green: 'bg-green-100 text-green-800 ring-green-200',
-    red: 'bg-red-100 text-red-800 ring-red-200',
-    amber: 'bg-amber-100 text-amber-800 ring-amber-200',
-    blue: 'bg-blue-100 text-blue-800 ring-blue-200',
-    zinc: 'bg-zinc-100 text-zinc-800 ring-zinc-200',
+type CreateOrderResult = {
+  orderInfo?: {
+    orderNumber?: string;
+    orderStatus?: string;
+    orderDate?: string;
+    currencyCode?: string;
+    orderEntry?: string;
+    customerPurchaseOrderNumber?: string;
+    checkoutProfileId?: string;
+    totalOrderSummary?: {
+      subTotal?: number;
+      estimatedShippingCost?: number | null;
+      estimatedTaxes?: number | null;
+      orderTotal?: number;
+    };
+    lineItems?: Array<{
+      tiLineItemNumber?: string;
+      customerLineItemNumber?: string;
+      tiPartNumber?: string;
+      tiPartDescription?: string;
+      quantity?: number;
+      unitPrice?: number;
+      netPrice?: number;
+      status?: string;
+      packageInformation?: {
+        carrier?: string;
+        delivery?: Array<{ type?: string; quantity?: number }>;
+      };
+    }>;
+    shippingAddress?: Partial<AddressLike>;
+    billingAddress?: Partial<AddressLike>;
   };
+  errors?: unknown;
+};
+
+type AddressLike = {
+  firstName: string;
+  lastName: string;
+  company?: string;
+  addressLine1?: string;
+  addressLine2?: string | null;
+  city?: string;
+  stateRegion?: string | null;
+  postalCode?: string;
+  regionCode?: string;
+  region?: string;
+  email?: string;
+  phoneNumber?: string;
+};
+
+// ───────────────────────────────── helpers ─────────────────────────────────
+
+const mode =
+  (process.env.NEXT_PUBLIC_TI_ORDER_MODE ?? process.env.TI_ORDER_MODE ?? 'test')
+    .toString()
+    .toLowerCase() as 'test' | 'live';
+
+function fmtMoney(v: number | undefined, ccy: string | undefined) {
+  if (v == null) return '—';
+  try {
+    return new Intl.NumberFormat(undefined, { style: 'currency', currency: ccy ?? 'USD' }).format(v);
+  } catch {
+    return `${v.toFixed(2)} ${ccy ?? ''}`.trim();
+  }
+}
+
+function Badge({
+  children,
+  color = '#111827',
+  text = '#e5e7eb',
+  title,
+}: {
+  children: React.ReactNode;
+  color?: string;
+  text?: string;
+  title?: string;
+}) {
   return (
-    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-xs ring-1 ${map[tone]}`}>
+    <span
+      title={title}
+      style={{
+        display: 'inline-block',
+        padding: '2px 8px',
+        borderRadius: 999,
+        background: color,
+        color: text,
+        fontSize: 12,
+        lineHeight: 1.6,
+        border: '1px solid rgba(255,255,255,0.06)',
+        whiteSpace: 'nowrap',
+      }}
+    >
       {children}
     </span>
   );
 }
 
-function Card({ children }: { children: React.ReactNode }) {
-  return <div className="rounded-2xl border p-4 shadow-sm bg-white/5">{children}</div>;
+function priceForQty(tier: PricingTier | undefined, qty: number): number | undefined {
+  if (!tier?.priceBreaks?.length || qty <= 0) return undefined;
+  const sorted = tier.priceBreaks.slice().sort((a, b) => a.priceBreakQuantity - b.priceBreakQuantity);
+  let p: number | undefined;
+  for (const br of sorted) {
+    if (qty >= br.priceBreakQuantity) p = br.price;
+    else break;
+  }
+  return p;
 }
 
-function Pretty({ json }: { json: any }) {
-  return <pre className="overflow-auto text-sm">{JSON.stringify(json, null, 2)}</pre>;
+async function fetchInventory(pn: string, ccy: string) {
+  const r = await fetch(`/api/ti-inventory/part?pn=${encodeURIComponent(pn)}&ccy=${ccy}`);
+  const j = await r.json();
+  if (!r.ok || !j.ok) throw new Error(j?.error ?? 'Inventory fetch failed');
+  return j.data as InventoryPart;
 }
 
-/** ─── Page ─── */
-export default function OrderTool() {
-  /** state: profiles */
-  const [profiles, setProfiles] = useState<Profile[]>([]);
-  const [loadingProfiles, setLoadingProfiles] = useState(true);
-  const [profileId, setProfileId] = useState('');
+async function enrichLine(pn: string, qty: number, ccy: string): Promise<Partial<CartLine>> {
+  const inv = await fetchInventory(pn, ccy);
+  const tier = inv.pricing?.[0];
+  const unit = priceForQty(tier, qty);
+  return {
+    description: inv.description,
+    available: inv.quantity ?? undefined,
+    unit: unit,
+    net: unit != null ? unit * qty : undefined,
+    currency: tier?.currency ?? ccy,
+  };
+}
 
-  /** state: form */
-  const [po, setPo] = useState<string>(`TEST-PO-${Date.now()}`);
+function extractTiErrorMessage(json: any, fallback: string, status?: number) {
+  // Obsłuż typowe kształty: { error: [...] } lub { error: "..." } lub plain text
+  const err = json?.error ?? json;
+  let msgs: string[] = [];
+
+  if (Array.isArray(err)) {
+    msgs = err
+      .map((e) => e?.message || e?.reason || e?.errorCode)
+      .filter(Boolean);
+  } else if (typeof err === 'string') {
+    msgs = [err];
+  } else if (err && typeof err === 'object') {
+    // czasem { errors: [...] }
+    const arr = Array.isArray(err.errors) ? err.errors : [];
+    if (arr.length) {
+      msgs = arr
+        .map((e: any) => e?.message || e?.reason || e?.errorCode)
+        .filter(Boolean);
+    } else if (err.message || err.reason) {
+      msgs = [err.message || err.reason];
+    }
+  }
+
+  const prefix =
+    status && status >= 500
+      ? `TI service issue (HTTP ${status})`
+      : status
+      ? `TI error (HTTP ${status})`
+      : `TI error`;
+
+  if (msgs.length) return `${prefix}: ${msgs.join(' | ')}`;
+  return `${prefix}: ${fallback}`;
+}
+
+// ───────────────────────────────── page ─────────────────────────────────
+
+export default function OrderPage() {
+  // checkout profile
+  const [profiles, setProfiles] = useState<CheckoutProfile[]>([]);
+  const [profileId, setProfileId] = useState<string>('');
+
+  // form
+  const [customerPO, setCustomerPO] = useState<string>('');
   const [comment, setComment] = useState<string>('dev test run');
-  const [expedite, setExpedite] = useState(false);
+  const [expedite, setExpedite] = useState<boolean>(false);
+  const [currency, setCurrency] = useState<string>('USD');
 
-  /** state: lines */
-  const [part, setPart] = useState('SN74HC00N');
-  const [qty, setQty] = useState(1);
-  type CartLine = {
-  tiPartNumber: string;
-  quantity: number;
-  price?: number;         // cena jednostkowa (z TI)
-  currency?: string;
-  onHandQty?: number;     // dostępne sztuki
-  leadTimeWeeks?: number; // lead time
-};
+  // cart / lines
+  const [lines, setLines] = useState<CartLine[]>([]);
+  const cartSubtotal = useMemo(
+    () => lines.reduce((s, l) => s + (l.net ?? 0), 0),
+    [lines]
+  );
+  const canCreate = lines.length > 0 && !!profileId;
 
-const [lines, setLines] = useState<CartLine[]>([]);
+  // create / retrieve
+  const [createBusy, setCreateBusy] = useState(false);
+  const [createErr, setCreateErr] = useState<string | null>(null);
+  const [createRes, setCreateRes] = useState<CreateOrderResult | null>(null);
+  const [lastOrder, setLastOrder] = useState<string>('');
+  const [retrieveBusy, setRetrieveBusy] = useState(false);
+  const [retrieveErr, setRetrieveErr] = useState<string | null>(null);
+  const [retrieveRes, setRetrieveRes] = useState<CreateOrderResult | null>(null);
 
-  const [partCheck, setPartCheck] = useState<{ ok: boolean; msg?: string } | null>(null);
-  const canAdd = useMemo(() => !!part.trim() && qty > 0 && (partCheck?.ok ?? false), [part, qty, partCheck]);
+  // local history of orders
+  const [history, setHistory] = useState<Array<{ order: string; date: string; total?: number }>>([]);
 
-  /** state: actions */
-  const [submitting, setSubmitting] = useState(false);
-  const [createResp, setCreateResp] = useState<CreateResp | null>(null);
-  const [retrieveData, setRetrieveData] = useState<any>(null);
-  const [error, setError] = useState<string | null>(null);
-
-  /** state: history */
-  const [history, setHistory] = useState<HistoryItem[]>([]);
-
-  /** load profiles */
+  // load profiles
   useEffect(() => {
     (async () => {
       try {
-        const res = await fetch('/api/ti-checkout/profiles');
-        const json = await res.json();
-        if (!res.ok || !json.ok) throw new Error(JSON.stringify(json.error ?? json));
-        setProfiles(json.data ?? []);
-        if ((json.data?.length ?? 0) > 0) setProfileId(json.data[0].checkoutProfileId);
-      } catch (e: any) {
-        setError(e?.message ?? 'Failed to load profiles');
-      } finally {
-        setLoadingProfiles(false);
-      }
+        const r = await fetch('/api/ti-checkout/profiles');
+        const j = await r.json();
+        if (j?.ok && Array.isArray(j.data)) {
+          setProfiles(j.data as CheckoutProfile[]);
+          if (!profileId && j.data[0]?.checkoutProfileId) {
+            setProfileId(j.data[0].checkoutProfileId);
+          }
+        }
+      } catch { /* ignore */ }
     })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  /** load history */
+  // load cart and enrich
   useEffect(() => {
-    const raw = localStorage.getItem('ti-panel:lastOrders');
-    if (raw) {
-      const arr = safeParse(raw) as HistoryItem[] | null;
-      if (Array.isArray(arr)) setHistory(arr);
-    }
-  }, []);
-
-  /** validate part number on change (debounced) */
-  useEffect(() => {
-    if (!part.trim()) { setPartCheck(null); return; }
-    const controller = new AbortController();
-    const t = setTimeout(async () => {
-      try {
-        // walidujemy po prostu istnienie części (200) – bez ceny
-        const url = `${process.env.NEXT_PUBLIC_TI_STORE_BASE ?? 'https://transact.ti.com'}/v2/store/products/${encodeURIComponent(part.trim())}?currency=USD`;
-        const res = await fetch('/api/ti-generic', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ url, method: 'GET' }),
-          signal: controller.signal,
-        });
-        const json = await res.json();
-        if (!res.ok || !json.ok) throw new Error('not ok');
-        setPartCheck({ ok: true });
-      } catch {
-        setPartCheck({ ok: false, msg: 'Part not found / unavailable' });
+    (async () => {
+      const baseCart = getCart(); // [{pn, qty}]
+      if (!baseCart.length) return;
+      const enriched: CartLine[] = [];
+      for (const it of baseCart) {
+        try {
+          const extra = await enrichLine(it.tiPartNumber, it.quantity, currency);
+          enriched.push({ ...it, ...extra });
+        } catch {
+          enriched.push({ ...it }); // minimal fallback
+        }
       }
-    }, 450);
-    return () => { clearTimeout(t); controller.abort(); };
-  }, [part]);
+      setLines(enriched);
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  /** helpers */
-   function pickPriceForQty(priceBreaks: any[] | undefined, qty: number): number | undefined {
-    if (!Array.isArray(priceBreaks) || !qty) return undefined;
-    // wybierz najwyższy próg, który nie przekracza qty
-    const sorted = [...priceBreaks].sort((a, b) => (a.priceBreakQuantity ?? 0) - (b.priceBreakQuantity ?? 0));
-    let price: number | undefined;
-    for (const br of sorted) {
-      if (qty >= (br.priceBreakQuantity ?? 0)) price = br.price;
-      else break;
-    }
-    return price;
-  }
+  // sync cart (persist)
+  useEffect(() => {
+    const basics: CartItemBasic[] = lines.map(l => ({ tiPartNumber: l.tiPartNumber, quantity: l.quantity }));
+    setCart(basics);
+  }, [lines]);
 
-  async function enrichLine(pn: string, qty: number): Promise<Partial<CartLine>> {
-    const res = await fetch(`/api/ti-inventory/part?pn=${encodeURIComponent(pn)}&ccy=USD`);
-    const json = await res.json();
-    if (!res.ok || !json.ok) return {};
-
-    const d = json.data;
-    const tier = Array.isArray(d?.pricing) ? d.pricing[0] : undefined;
-    const currency = tier?.currency ?? 'USD';
-    const price = pickPriceForQty(tier?.priceBreaks, qty);
-
-    const onHand = d?.quantity;           // ← z Twojego payloadu
-    const lead   = undefined;             // brak w tej odpowiedzi – zostawiamy "—"
-
-    return { price, currency, onHandQty: onHand, leadTimeWeeks: lead };
-  }
-
-
-
-    async function addLine() {
-      if (!canAdd) return;
-      const base: CartLine = { tiPartNumber: part.trim(), quantity: qty };
-      const extra = await enrichLine(base.tiPartNumber, base.quantity);
-      setLines(prev => [...prev, { ...base, ...extra }]);
-      setPart(''); setQty(1); setPartCheck(null);
-    }
-
-    async function updateLineQty(i: number, newQty: number) {
-    setLines(prev => {
-      const next = [...prev];
-      next[i] = { ...next[i], quantity: newQty };
-      return next;
-    });
-    // przelicz cenę wg progów dla nowej ilości
-    const l = lines[i];
-    const extra = await enrichLine(l.tiPartNumber, newQty);
-    setLines(prev => {
-      const next = [...prev];
-      next[i] = { ...next[i], ...extra };
-      return next;
-    });
-  }
-
-
-
-  function removeLine(i: number) {
-    setLines((prev) => prev.filter((_, idx) => idx !== i));
-  }
-
-  const canSubmit = useMemo(() => profileId && lines.length > 0 && po.trim().length > 0, [profileId, lines, po]);
-
-  /** actions */
-  async function createOrder() {
-    setSubmitting(true);
-    setCreateResp(null);
-    setRetrieveData(null);
-    setError(null);
+  // load local history
+  useEffect(() => {
     try {
-      const body = {
-        order: {
-          checkoutProfileId: profileId,
-          customerPurchaseOrderNumber: po.trim(),
-          purchaseOrderDate: new Date().toISOString(),
-          expediteShipping: expedite,
-          customerOrderComments: comment ? [{ message: comment }] : [],
-          lineItems: lines.map((l, idx) => ({
-            customerLineItemNumber: idx + 1,
-            tiPartNumber: l.tiPartNumber,
-            quantity: l.quantity,
-          })),
-        },
-      };
+      const raw = localStorage.getItem('ti-order-history');
+      if (raw) setHistory(JSON.parse(raw));
+    } catch { /* ignore */ }
+  }, []);
+  useEffect(() => {
+    localStorage.setItem('ti-order-history', JSON.stringify(history));
+  }, [history]);
 
-      const res = await fetch('/api/ti-order/create', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body),
-      });
-      const json = await res.json();
-      if (!res.ok || !json.ok) throw new Error(JSON.stringify(json.error ?? json));
-      setCreateResp(json);
-
-      // wpis do historii
-      const info = json?.result?.orderInfo ?? {};
-      const entry: HistoryItem = {
-        orderNumber: info?.orderNumber ?? '—',
-        date: info?.orderDate ?? new Date().toISOString(),
-        total: info?.totalOrderSummary?.orderTotal,
-        currency: info?.currencyCode ?? 'USD',
-      };
-      const next = [entry, ...history].slice(0, 10);
-      setHistory(next);
-      localStorage.setItem('ti-panel:lastOrders', JSON.stringify(next));
-    } catch (e: any) {
-      setCreateResp({ ok: false, error: safeParse(e?.message) ?? e?.message ?? 'Create failed' });
+  // add new line manually
+  const [newPn, setNewPn] = useState('');
+  const [newQty, setNewQty] = useState(1);
+  const [addBusy, setAddBusy] = useState(false);
+  async function addLine() {
+    if (!newPn.trim() || newQty <= 0) return;
+    setAddBusy(true);
+    try {
+      const extra = await enrichLine(newPn.trim(), newQty, currency);
+      setLines(prev => [...prev, { tiPartNumber: newPn.trim(), quantity: newQty, ...extra }]);
+      setNewPn('');
+      setNewQty(1);
     } finally {
-      setSubmitting(false);
+      setAddBusy(false);
     }
   }
 
-  async function retrieve(orderOverride?: string) {
+  // update qty on a line
+  async function updateQty(idx: number, qty: number) {
+    if (qty <= 0) return;
+    const line = lines[idx];
+    setLines(prev => {
+      const next = [...prev];
+      next[idx] = { ...line, quantity: qty, net: line.unit != null ? line.unit * qty : undefined };
+      return next;
+    });
+    // re-enrich in background (price tier may change with qty)
     try {
-      setError(null);
-      setRetrieveData(null);
+      const extra = await enrichLine(line.tiPartNumber, qty, currency);
+      setLines(prev => {
+        const next = [...prev];
+        next[idx] = { ...next[idx], ...extra, quantity: qty };
+        return next;
+      });
+    } catch { /* ignore */ }
+  }
 
-      const orderNumber =
-        orderOverride ||
-        createResp?.result?.orderInfo?.orderNumber ||
-        createResp?.result?.orderNumber ||
-        createResp?.result?.orderId ||
-        createResp?.result?.order?.orderNumber;
+  function removeLine(idx: number) {
+    setLines(prev => prev.filter((_, i) => i !== idx));
+  }
 
-      if (!orderNumber) {
-        setError('Brak orderNumber w odpowiedzi CREATE.');
-        return;
-      }
+  async function onCreate() {
+  if (!canCreate) return;
+  setCreateBusy(true);
+  setCreateErr(null);
+  setCreateRes(null);
+  setRetrieveRes(null);
+  try {
+    const res = await fetch('/api/ti-order/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        profileId,
+        po: customerPO || `TEST-PO-${Date.now()}`,
+        comment,
+        expedite,
+        lines: lines.map(l => ({ tiPartNumber: l.tiPartNumber, quantity: l.quantity })),
+        mode, // 'test' | 'live'
+      }),
+    });
 
-      const res = await fetch(`/api/ti-order/${encodeURIComponent(orderNumber)}`);
-      const json = await res.json();
-      if (!res.ok || !json.ok) throw new Error(JSON.stringify(json.error ?? json));
-      setRetrieveData(json);
-    } catch (e: any) {
-      setError(safeParse(e?.message) ?? e?.message ?? 'Retrieve failed');
+    const text = await res.text();
+    let json: any = null;
+    try { json = text ? JSON.parse(text) : null; } catch {}
+
+    if (!res.ok || !json?.ok) {
+      // zbuduj czytelny komunikat z odpowiedzi TI
+      const msg = extractTiErrorMessage(json, text || `HTTP ${res.status}`, json?.status ?? res.status);
+      throw new Error(msg);
+    }
+
+    setCreateRes(json.result);
+    const orderNo = json.result?.orderInfo?.orderNumber ?? '';
+    setLastOrder(orderNo);
+    setHistory(prev => [{ order: orderNo, date: new Date().toISOString(), total: json.result?.orderInfo?.totalOrderSummary?.orderTotal }, ...prev].slice(0, 20));
+    clearCart();
+    setLines([]);
+  } catch (e: any) {
+    setCreateErr(e?.message ?? 'Create failed');
+  } finally {
+    setCreateBusy(false);
+  }
+}
+
+
+  async function onRetrieve(orderId: string) {
+    if (!orderId.trim()) return;
+    setRetrieveBusy(true);
+    setRetrieveErr(null);
+    setRetrieveRes(null);
+    try {
+      const r = await fetch(`/api/ti-order/${encodeURIComponent(orderId.trim())}`);
+      const j = (await r.json()) as { ok: boolean; result?: CreateOrderResult; error?: unknown };
+      if (!r.ok || !j.ok) throw new Error(typeof j.error === 'string' ? j.error : 'Retrieve failed');
+      setRetrieveRes(j.result ?? null);
+    } catch (e) {
+      setRetrieveErr(e instanceof Error ? e.message : 'Retrieve failed');
+    } finally {
+      setRetrieveBusy(false);
     }
   }
 
-  /** derived */
-  const orderInfo = createResp?.result?.orderInfo ?? null;
-  const orderNo = orderInfo?.orderNumber as string | undefined;
-  const ccy = orderInfo?.currencyCode ?? 'USD';
-  const totals = orderInfo?.totalOrderSummary ?? {};
-  const itemCount = Array.isArray(orderInfo?.lineItems) ? orderInfo.lineItems.length : 0;
-  const endpoint = (createResp?.meta?.endpoint as string | undefined) ?? `/v2/store/orders/${MODE === 'live' ? '' : 'test'}`;
-  const estSubtotal = lines.reduce((s, l) => s + ((l.price ?? 0) * l.quantity), 0);
-  const estCurrency = lines[0]?.currency ?? 'USD';
-
+  const modeColor = mode === 'test' ? '#0b3b1f' : '#3b0b0b';
+  const modeText = mode === 'test' ? '#a7f3d0' : '#fecaca';
 
   return (
-    <main className="p-6 max-w-7xl mx-auto text-sm">
-      <h1 className="text-2xl font-semibold mb-3">Order</h1>
-      <div className="mb-4 flex items-center justify-between">
-        <div className="text-sm">
-          Mode: <b>{MODE}</b> — endpoint: <code>{endpoint}</code>
-        </div>
-        {MODE !== 'live' ? <Badge tone="blue">Safe TEST mode</Badge> : <Badge tone="red">LIVE</Badge>}
+    <div>
+      <h1 style={{ fontSize: 28, fontWeight: 700, margin: '8px 0 6px' }}>Order</h1>
+      <div style={{ display: 'flex', gap: 10, alignItems: 'center', marginBottom: 14 }}>
+        <Badge color={modeColor} text={modeText} title="Order mode">{mode.toUpperCase()}</Badge>
+        <span style={{ color: '#9ca3af', fontSize: 12 }}>
+          endpoint: {mode === 'test' ? '/v2/store/orders/test' : '/v2/store/orders'}
+        </span>
       </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* LEFT: form */}
-        <div className="space-y-4">
-          <Card>
-            <div className="grid gap-3">
-              <label className="block">
-                <span className="block text-xs mb-1">Checkout profile</span>
-                <select
-                  className="border rounded px-3 py-2 w-full"
-                  disabled={loadingProfiles}
-                  value={profileId}
-                  onChange={(e) => setProfileId(e.target.value)}
-                >
-                  {profiles.map((p) => (
-                    <option key={p.checkoutProfileId} value={p.checkoutProfileId}>
-                      {p.checkoutProfileName ?? p.checkoutProfileId} — ship:{p.shippingAddressName} / bill:{p.billingAddressName}
-                    </option>
-                  ))}
-                </select>
-              </label>
+      {/* FORM CARD */}
+      <section style={card}>
+        <h2 style={h2}>Checkout & header</h2>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <label className="block">
-                  <span className="block text-xs mb-1">Customer PO</span>
-                  <input
-                    className="border rounded px-3 py-2 w-full"
-                    value={po}
-                    onChange={(e) => setPo(e.target.value)}
-                  />
-                </label>
+        <div style={grid2}>
+          <div>
+            <label className="block" style={label}>Checkout profile</label>
+            <select
+              value={profileId}
+              onChange={e => setProfileId(e.target.value)}
+              style={input}
+            >
+              {profiles.map(p => (
+                <option key={p.checkoutProfileId} value={p.checkoutProfileId}>
+                  {p.checkoutProfileName ?? p.checkoutProfileId} — ship:{p.shippingAddressName ?? '—'} / bill:{p.billingAddressName ?? '—'}
+                </option>
+              ))}
+            </select>
+          </div>
 
-                <label className="block">
-                  <span className="block text-xs mb-1">Comment</span>
-                  <input
-                    className="border rounded px-3 py-2 w-full"
-                    value={comment}
-                    onChange={(e) => setComment(e.target.value)}
-                    placeholder="optional"
-                  />
-                </label>
-              </div>
-
-              <label className="inline-flex items-center gap-2">
-                <input type="checkbox" checked={expedite} onChange={(e) => setExpedite(e.target.checked)} />
-                <span>Expedite shipping</span>
-              </label>
+          <div style={{ display: 'grid', gap: 8 }}>
+            <div>
+              <label style={label}>Customer PO</label>
+              <input value={customerPO} onChange={e => setCustomerPO(e.target.value)} style={input}/>
             </div>
-          </Card>
-
-          <Card>
-            <div className="grid md:grid-cols-[1fr,120px,120px] gap-2 items-end">
-              <label className="block">
-                <span className="block text-xs mb-1">TI part number</span>
-                <input
-                  className={`border rounded px-3 py-2 w-full ${partCheck ? (partCheck.ok ? 'border-green-400' : 'border-red-400') : ''}`}
-                  placeholder="np. SN74HC00N"
-                  value={part}
-                  onChange={(e) => setPart(e.target.value)}
-                />
-                {partCheck && !partCheck.ok ? (
-                  <div className="text-xs text-red-600 mt-1">{partCheck.msg}</div>
-                ) : null}
-              </label>
-              <label className="block">
-                <span className="block text-xs mb-1">Qty</span>
-                <input
-                  type="number"
-                  min={1}
-                  className="border rounded px-3 py-2 w-full"
-                  value={qty}
-                  onChange={(e) => setQty(parseInt(e.target.value || '1', 10))}
-                />
-              </label>
-              <button
-                onClick={addLine}
-                className="px-4 py-2 rounded bg-black text-white disabled:opacity-50"
-                disabled={!canAdd}
-              >
-                Add line
-              </button>
+            <div>
+              <label style={label}>Comment</label>
+              <input value={comment} onChange={e => setComment(e.target.value)} style={input}/>
             </div>
+            <label style={{ display: 'flex', alignItems: 'center', gap: 8, marginTop: 4 }}>
+              <input type="checkbox" checked={expedite} onChange={e => setExpedite(e.target.checked)} />
+              <span>Expedite shipping</span>
+            </label>
+          </div>
+        </div>
+      </section>
 
-            <div className="mt-4 rounded-xl border overflow-hidden">
-              <table className="w-full">
-                <thead className="bg-zinc-50 text-left">
-                  <tr>
-                    <th className="p-2 w-10">#</th>
-                    <th className="p-2">Part</th>
-                    <th className="p-2 w-24 text-right">Qty</th>
-                    <th className="p-2 w-24 text-right">Avail</th>
-                    <th className="p-2 w-24 text-right">Price</th>
-                    <th className="p-2 w-28 text-right">Subtotal</th>
-                    <th className="p-2 w-20"></th>
+      {/* LINES CARD */}
+      <section style={card}>
+        <h2 style={h2}>Line items</h2>
+
+        {/* add manual line */}
+        <div style={{ display: 'flex', gap: 8, marginBottom: 8, alignItems: 'center' }}>
+          <input
+            placeholder="TI PN (np. SN74HC00N)"
+            value={newPn}
+            onChange={e => setNewPn(e.target.value)}
+            style={{ ...input, flex: 1 }}
+          />
+          <input
+            type="number"
+            min={1}
+            value={newQty}
+            onChange={e => setNewQty(Math.max(1, parseInt(e.target.value || '1', 10)))}
+            style={{ ...input, width: 100, textAlign: 'right' }}
+          />
+          <button onClick={addLine} disabled={addBusy} style={btn}>
+            {addBusy ? 'Adding…' : 'Add line'}
+          </button>
+        </div>
+
+        {/* table */}
+        <div style={{ overflow: 'auto' }}>
+          <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+            <thead>
+              <tr style={{ background: '#111', color: '#d4d4d4' }}>
+                <th style={th}>#</th>
+                <th style={th}>Part</th>
+                <th style={th}>Desc</th>
+                <th style={thRight}>Avail</th>
+                <th style={thRight}>Qty</th>
+                <th style={thRight}>Unit</th>
+                <th style={thRight}>Net</th>
+                <th style={th}> </th>
+              </tr>
+            </thead>
+            <tbody>
+              {lines.length === 0 && (
+                <tr>
+                  <td colSpan={8} style={{ padding: 12, color: '#a1a1a1' }}>Cart is empty.</td>
+                </tr>
+              )}
+              {lines.map((l, i) => (
+                <tr key={`${l.tiPartNumber}-${i}`} style={{ borderTop: '1px solid #1f2937' }}>
+                  <td style={td}>{i + 1}</td>
+                  <td style={td}><b>{l.tiPartNumber}</b></td>
+                  <td style={td}>{l.description ?? '—'}</td>
+                  <td style={tdRight}>{l.available != null ? l.available.toLocaleString() : '—'}</td>
+                  <td style={tdRight}>
+                    <input
+                      type="number"
+                      min={1}
+                      value={l.quantity}
+                      onChange={e => updateQty(i, Math.max(1, parseInt(e.target.value || '1', 10)))}
+                      style={{ ...input, width: 90, textAlign: 'right' }}
+                    />
+                  </td>
+                  <td style={tdRight}>{fmtMoney(l.unit, l.currency)}</td>
+                  <td style={tdRight}>{fmtMoney(l.net, l.currency)}</td>
+                  <td style={td}>
+                    <button onClick={() => removeLine(i)} style={btnGhost}>remove</button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            {lines.length > 0 && (
+              <tfoot>
+                <tr style={{ borderTop: '1px solid #1f2937' }}>
+                  <td colSpan={6} style={{ ...tdRight, fontWeight: 700 }}>Subtotal</td>
+                  <td style={{ ...tdRight, fontWeight: 700 }}>
+                    {fmtMoney(cartSubtotal, lines[0]?.currency ?? 'USD')}
+                  </td>
+                  <td />
+                </tr>
+              </tfoot>
+            )}
+          </table>
+        </div>
+      </section>
+
+      {/* ACTIONS */}
+      <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 12 }}>
+        <button onClick={onCreate} disabled={!canCreate || createBusy} style={btnPrimary}>
+          {createBusy ? 'Creating…' : `Create (${mode.toUpperCase()})`}
+        </button>
+        {createErr && (
+  <div style={{ marginLeft: 8, flex: 1 }}>
+    <ErrorBanner>{createErr}</ErrorBanner>
+  </div>
+)}
+
+      </div>
+
+      {/* CREATE RESPONSE */}
+      {createRes?.orderInfo && (
+        <section style={card}>
+          <h2 style={h2}>Create response</h2>
+
+          <div style={{ display: 'flex', gap: 12, alignItems: 'center', marginBottom: 8 }}>
+            <div style={{ fontSize: 14 }}>
+              Order #: <b>{createRes.orderInfo.orderNumber ?? '—'}</b>
+            </div>
+            <button
+              onClick={() => navigator.clipboard.writeText(createRes.orderInfo?.orderNumber ?? '')}
+              style={btnGhost}
+            >
+              Copy
+            </button>
+            <Badge color={modeColor} text={modeText}>via {mode === 'test' ? '/v2/store/orders/test' : '/v2/store/orders'}</Badge>
+          </div>
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
+            <CardKV
+              title="Status"
+              rows={[
+                ['Order status', createRes.orderInfo.orderStatus ?? '—'],
+                ['Date', createRes.orderInfo.orderDate ? new Date(createRes.orderInfo.orderDate).toLocaleString() : '—'],
+                ['PO', createRes.orderInfo.customerPurchaseOrderNumber ?? '—'],
+              ]}
+            />
+            <CardKV
+              title="Totals"
+              rows={[
+                ['Subtotal', fmtMoney(createRes.orderInfo.totalOrderSummary?.subTotal, createRes.orderInfo.currencyCode)],
+                ['Shipping (est.)', fmtMoney(createRes.orderInfo.totalOrderSummary?.estimatedShippingCost ?? undefined, createRes.orderInfo.currencyCode)],
+                ['Taxes (est.)', fmtMoney(createRes.orderInfo.totalOrderSummary?.estimatedTaxes ?? undefined, createRes.orderInfo.currencyCode)],
+                ['Order total', fmtMoney(createRes.orderInfo.totalOrderSummary?.orderTotal, createRes.orderInfo.currencyCode)],
+              ]}
+            />
+          </div>
+
+          <div style={{ marginTop: 12 }}>
+            <h3 style={h3}>Items</h3>
+            <div style={{ overflow: 'auto' }}>
+              <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                <thead>
+                  <tr style={{ background: '#111', color: '#d4d4d4' }}>
+                    <th style={th}>#</th>
+                    <th style={th}>Part</th>
+                    <th style={th}>Desc</th>
+                    <th style={thRight}>Qty</th>
+                    <th style={thRight}>Unit</th>
+                    <th style={thRight}>Net</th>
+                    <th style={th}>Status</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {lines.length === 0 ? (
-                    <tr><td className="p-3 text-zinc-500" colSpan={7}>No items</td></tr>
-                  ) : (
-                    lines.map((l, i) => {
-                      const sub = (l.price ?? 0) * l.quantity;
-                      const warn = l.onHandQty != null && l.quantity > l.onHandQty;
-                      return (
-                        <tr key={i} className="border-t">
-                          <td className="p-2">{i + 1}</td>
-                          <td className="p-2">{l.tiPartNumber}</td>
-                          <td className="p-2 text-right">
-                            <input
-                              type="number"
-                              min={1}
-                              className="border rounded px-2 py-1 w-20 text-right"
-                              value={l.quantity}
-                              onChange={e => {
-                                const v = parseInt(e.target.value || '1', 10);
-                                updateLineQty(i, Math.max(1, v));
-                              }}
-                            />
-                          </td>
-                          <td className={`p-2 text-right ${warn ? 'text-amber-600 font-medium' : ''}`}>
-                            {l.onHandQty ?? '—'}
-                          </td>
-                          <td className="p-2 text-right">
-                            {l.price != null ? currencyFmt(l.price, l.currency ?? 'USD') : '—'}
-                          </td>
-                          <td className="p-2 text-right">
-                            {l.price != null ? currencyFmt(sub, l.currency ?? 'USD') : '—'}
-                          </td>
-                          <td className="p-2 text-right">
-                            <button className="text-xs underline" onClick={() => removeLine(i)}>remove</button>
-                          </td>
-                        </tr>
-                      );
-                    })
-                  )}
+                  {(createRes.orderInfo.lineItems ?? []).map((li, i) => (
+                    <tr key={i} style={{ borderTop: '1px solid #1f2937' }}>
+                      <td style={td}>{i + 1}</td>
+                      <td style={td}><b>{li.tiPartNumber}</b></td>
+                      <td style={td}>{li.tiPartDescription ?? '—'}</td>
+                      <td style={tdRight}>{li.quantity ?? '—'}</td>
+                      <td style={tdRight}>{fmtMoney(li.unitPrice, createRes.orderInfo?.currencyCode)}</td>
+                      <td style={tdRight}>{fmtMoney(li.netPrice, createRes.orderInfo?.currencyCode)}</td>
+                      <td style={td}>{li.status ?? '—'}</td>
+                    </tr>
+                  ))}
                 </tbody>
               </table>
             </div>
+          </div>
+        </section>
+      )}
 
+      {/* RETRIEVE */}
+      <section style={card}>
+        <h2 style={h2}>Retrieve</h2>
+        <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginBottom: 8 }}>
+          <input
+            placeholder="Order number (e.g. T05979925)"
+            value={lastOrder}
+            onChange={e => setLastOrder(e.target.value)}
+            style={{ ...input, width: 260 }}
+          />
+          <button onClick={() => onRetrieve(lastOrder)} disabled={retrieveBusy} style={btn}>
+            {retrieveBusy ? 'Retrieving…' : 'Retrieve order'}
+          </button>
+          {retrieveErr && <span style={{ color: '#ef4444', fontSize: 13 }}>Error: {retrieveErr}</span>}
+        </div>
 
+        {retrieveRes?.orderInfo && (
+          <div style={{ marginTop: 8 }}>
+            <CardKV
+              title={`Order ${retrieveRes.orderInfo.orderNumber ?? ''}`}
+              rows={[
+                ['Status', retrieveRes.orderInfo.orderStatus ?? '—'],
+                ['Date', retrieveRes.orderInfo.orderDate ? new Date(retrieveRes.orderInfo.orderDate).toLocaleString() : '—'],
+                ['Currency', retrieveRes.orderInfo.currencyCode ?? '—'],
+                ['Total', fmtMoney(retrieveRes.orderInfo.totalOrderSummary?.orderTotal, retrieveRes.orderInfo.currencyCode)],
+              ]}
+            />
 
-            <div className="mt-3 flex items-center gap-4">
-              <div className="text-sm">
-                Pre-subtotal: <b>{currencyFmt(estSubtotal, estCurrency)}</b>
+            <div style={{ marginTop: 10 }}>
+              <h3 style={h3}>Items</h3>
+              <div style={{ overflow: 'auto' }}>
+                <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+                  <thead>
+                    <tr style={{ background: '#111', color: '#d4d4d4' }}>
+                      <th style={th}>#</th>
+                      <th style={th}>Part</th>
+                      <th style={th}>Desc</th>
+                      <th style={thRight}>Qty</th>
+                      <th style={thRight}>Unit</th>
+                      <th style={thRight}>Net</th>
+                      <th style={th}>Status</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(retrieveRes.orderInfo.lineItems ?? []).map((li, i) => (
+                      <tr key={i} style={{ borderTop: '1px solid #1f2937' }}>
+                        <td style={td}>{i + 1}</td>
+                        <td style={td}><b>{li.tiPartNumber}</b></td>
+                        <td style={td}>{li.tiPartDescription ?? '—'}</td>
+                        <td style={tdRight}>{li.quantity ?? '—'}</td>
+                        <td style={tdRight}>{fmtMoney(li.unitPrice, retrieveRes.orderInfo?.currencyCode)}</td>
+                        <td style={tdRight}>{fmtMoney(li.netPrice, retrieveRes.orderInfo?.currencyCode)}</td>
+                        <td style={td}>{li.status ?? '—'}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               </div>
-              <button
-                onClick={createOrder}
-                disabled={!canSubmit || submitting}
-                className="px-4 py-2 rounded bg-black text-white disabled:opacity-50"
-              >
-                {submitting ? 'Creating…' : 'Create (TEST)'}
-              </button>
-              {orderNo && (
-                <button onClick={() => retrieve()} className="px-4 py-2 rounded border">
-                  Retrieve order
-                </button>
-              )}
             </div>
+          </div>
+        )}
+      </section>
 
-          </Card>
-        </div>
-
-        {/* RIGHT: summary & history */}
-        <div className="space-y-4">
-          {error && (
-            <Card>
-              <div className="text-red-700">{String(error)}</div>
-            </Card>
-          )}
-
-          {orderNo && (
-            <Card>
-              <div className="flex items-center justify-between">
-                <div className="text-sm text-zinc-400">Order #</div>
-                <button className="text-xs underline" onClick={() => orderNo && copy(orderNo)}>Copy</button>
-              </div>
-              <div className="text-xl font-semibold mt-1">{orderNo}</div>
-              <div className="mt-3 grid grid-cols-2 gap-3">
-                <div>
-                  <div className="text-sm text-zinc-400">Status</div>
-                  <div className="mt-1"><Badge tone={orderInfo?.orderStatus === 'PROCESSING' ? 'amber' : 'zinc'}>{orderInfo?.orderStatus ?? '—'}</Badge></div>
-                </div>
-                <div>
-                  <div className="text-sm text-zinc-400">Items</div>
-                  <div className="mt-1">{itemCount || 0}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-zinc-400">Subtotal (est.)</div>
-                  <div className="mt-1">{currencyFmt(totals?.subTotal, ccy)}</div>
-                </div>
-                <div>
-                  <div className="text-sm text-zinc-400">Order total (est.)</div>
-                  <div className="mt-1">{currencyFmt(totals?.orderTotal, ccy)}</div>
-                </div>
-              </div>
-            </Card>
-          )}
-
-          {orderInfo?.lineItems?.length > 0 && (
-            <Card>
-              <div className="mb-2 font-medium">Items</div>
-              <div className="rounded-xl border overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead className="bg-zinc-50 text-left">
-                    <tr>
-                      <th className="p-2 w-10">#</th>
-                      <th className="p-2">Part</th>
-                      <th className="p-2">Desc</th>
-                      <th className="p-2 w-16 text-right">Qty</th>
-                      <th className="p-2 w-24 text-right">Unit</th>
-                      <th className="p-2 w-24 text-right">Net</th>
-                      <th className="p-2 w-28">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orderInfo.lineItems.map((li: any, i: number) => (
-                      <tr key={i} className="border-t">
-                        <td className="p-2">{li.customerLineItemNumber ?? i + 1}</td>
-                        <td className="p-2">{li.tiPartNumber}</td>
-                        <td className="p-2">{li.tiPartDescription}</td>
-                        <td className="p-2 text-right">{li.quantity}</td>
-                        <td className="p-2 text-right">{currencyFmt(li.unitPrice, ccy)}</td>
-                        <td className="p-2 text-right">{currencyFmt(li.netPrice, ccy)}</td>
-                        <td className="p-2"><Badge tone={li.status === 'PROCESSING' ? 'amber' : 'zinc'}>{li.status ?? '—'}</Badge></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </Card>
-          )}
-
-          {createResp && (
-            <details className="rounded-2xl border p-3">
-              <summary className="cursor-pointer font-medium">Create response (raw JSON)</summary>
-              <Pretty json={createResp} />
-            </details>
-          )}
-
-          {retrieveData && (
-            <details className="rounded-2xl border p-3">
-              <summary className="cursor-pointer font-medium">Retrieve response</summary>
-              <Pretty json={retrieveData} />
-            </details>
-          )}
-
-          <Card>
-            <div className="mb-2 font-medium">History (local)</div>
-            {history.length === 0 ? (
-              <div className="text-zinc-500">No recent orders.</div>
-            ) : (
-              <div className="rounded-xl border overflow-hidden">
-                <table className="w-full">
-                  <thead className="bg-zinc-50 text-left">
-                    <tr>
-                      <th className="p-2">Order #</th>
-                      <th className="p-2">Date</th>
-                      <th className="p-2 text-right">Total</th>
-                      <th className="p-2 w-28"></th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {history.map((h, i) => (
-                      <tr key={i} className="border-t">
-                        <td className="p-2">{h.orderNumber}</td>
-                        <td className="p-2">{new Date(h.date).toLocaleString()}</td>
-                        <td className="p-2 text-right">{h.total != null ? currencyFmt(h.total, h.currency ?? 'USD') : '—'}</td>
-                        <td className="p-2">
-                          <button className="text-xs underline" onClick={() => retrieve(h.orderNumber)}>Retrieve</button>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </Card>
-        </div>
-      </div>
-    </main>
+      {/* HISTORY */}
+      {history.length > 0 && (
+        <section style={card}>
+          <h2 style={h2}>History (local)</h2>
+          <div style={{ overflow: 'auto' }}>
+            <table style={{ width: '100%', borderCollapse: 'collapse' }}>
+              <thead>
+                <tr style={{ background: '#111', color: '#d4d4d4' }}>
+                  <th style={th}>Order #</th>
+                  <th style={th}>Date</th>
+                  <th style={thRight}>Total</th>
+                  <th style={th}> </th>
+                </tr>
+              </thead>
+              <tbody>
+                {history.map((h, i) => (
+                  <tr key={i} style={{ borderTop: '1px solid #1f2937' }}>
+                    <td style={td}>{h.order}</td>
+                    <td style={td}>{new Date(h.date).toLocaleString()}</td>
+                    <td style={tdRight}>{h.total != null ? h.total.toFixed(2) : '—'}</td>
+                    <td style={td}>
+                      <button onClick={() => { setLastOrder(h.order); onRetrieve(h.order); }} style={btnGhost}>Retrieve</button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      )}
+    </div>
   );
 }
+
+// ─────────────────────────────── UI bits ───────────────────────────────
+
+function CardKV({ title, rows }: { title: string; rows: Array<[string, React.ReactNode]> }) {
+  return (
+    <div style={{ border: '1px solid #222', borderRadius: 12, background: '#0f0f0f', padding: 12 }}>
+      <h3 style={{ margin: '0 0 8px', fontSize: 15, fontWeight: 700 }}>{title}</h3>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
+        {rows.map(([k, v], i) => (
+          <div key={i} style={{ display: 'contents' }}>
+            <div style={{ color: '#9ca3af', fontSize: 12 }}>{k}</div>
+            <div style={{ fontSize: 13 }}>{v}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function ErrorBanner({ children }: { children: React.ReactNode }) {
+  return (
+    <div style={{
+      border: '1px solid #7f1d1d',
+      background: '#1f0b0b',
+      color: '#fecaca',
+      padding: '8px 10px',
+      borderRadius: 8,
+      fontSize: 13,
+    }}>
+      {children}
+    </div>
+  );
+}
+
+const card: React.CSSProperties = {
+  border: '1px solid #222',
+  borderRadius: 16,
+  background: '#0b0b0b',
+  padding: 16,
+  marginBottom: 12,
+};
+
+const h2: React.CSSProperties = { margin: '0 0 10px', fontSize: 18, fontWeight: 700 };
+const h3: React.CSSProperties = { margin: '0 0 6px', fontSize: 15, fontWeight: 700 };
+
+const label: React.CSSProperties = { display: 'block', marginBottom: 6, fontSize: 12, color: '#9ca3af' };
+const input: React.CSSProperties = {
+  border: '1px solid #222',
+  borderRadius: 10,
+  background: '#0f0f0f',
+  color: '#eaeaea',
+  padding: '8px 10px',
+};
+const btn: React.CSSProperties = {
+  border: '1px solid #222',
+  borderRadius: 8,
+  background: '#111',
+  color: '#eaeaea',
+  padding: '8px 12px',
+  cursor: 'pointer',
+};
+const btnPrimary: React.CSSProperties = { ...btn, background: '#1a1a1a', fontWeight: 700 };
+const btnGhost: React.CSSProperties = { ...btn, background: '#0b0b0b' };
+
+const th: React.CSSProperties = {
+  textAlign: 'left',
+  padding: '8px 10px',
+  fontWeight: 600,
+  fontSize: 12,
+  borderBottom: '1px solid #1f2937',
+  whiteSpace: 'nowrap',
+};
+const thRight: React.CSSProperties = { ...th, textAlign: 'right' as const };
+const td: React.CSSProperties = { padding: '8px 10px', fontSize: 13, verticalAlign: 'top' };
+const tdRight: React.CSSProperties = { ...td, textAlign: 'right' as const };
+
+const grid2: React.CSSProperties = {
+  display: 'grid',
+  gridTemplateColumns: '1fr 1fr',
+  gap: 12,
+};

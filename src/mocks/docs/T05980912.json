@@ -1,0 +1,18 @@
+{
+  "documents": [
+    {
+      "type": "Invoice",
+      "documentNumber": "INV-TEST-001",
+      "date": "2025-09-23",
+      "amount": 12.66,
+      "id": "5999999999"
+    },
+    {
+      "type": "Packing List",
+      "documentNumber": "PKL-TEST-001",
+      "date": "2025-09-23",
+      "amount": 0,
+      "id": "PL-001"
+    }
+  ]
+}

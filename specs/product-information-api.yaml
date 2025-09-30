@@ -1,0 +1,637 @@
+openapi: 3.0.2
+info:
+  title: Product information API
+  description: Open API spec for the TI product information API.
+  contact:
+    name: API Support
+    url: https://www.ti.com/developer-api/support.html
+  version: "1.0"
+servers:
+  - url: 'https://transact.ti.com/v1'
+    description: External Production API Gateway
+
+tags:
+- name: Products
+security:
+  - Oauth: []
+paths:
+  /products:
+    get:
+      tags:
+      - Products
+      description: Get pageable products list
+      operationId: getProductsUsingGET
+      parameters:
+      - name: GenericProductIdentifier
+        in: query
+        description: The GenericProductIdentifier value (Generic Part Number) for which to filter the product results
+        schema:
+          type: string
+      - name: LifeCycleStatus
+        in: query
+        description: The LifeCycleStatus value for which to filter the product results
+        schema:
+          type: string
+      - name: PackageType
+        in: query
+        description: The Package Type for which to filter the product results
+        schema:
+          type: string
+      - name: Page
+        in: query
+        description: The index of the page (starting at zero) to be returned from this request
+        required: true
+        schema:
+          type: integer
+          format: int32
+      - name: Pin
+        in: query
+        description: The pin count for which to filter the product results
+        schema:
+          type: integer
+          format: int32
+      - name: ProductFamilyDescription
+        in: query
+        description: The ProductFamilyDescription for which to filter the product results. Filters are based on a pattern match, so products whose families start with the provided string will be returned
+        schema:
+          type: string
+      - name: Size
+        in: query
+        description: The page size between 1 and 100 to be returned
+        required: true
+        schema:
+          type: integer
+          format: int32
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Page%3CProduct%3E'
+        400:
+          description: Bad request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        404:
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        405:
+          description: Method Not Supported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        429:
+          description: Too Many Requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        500:
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        503:
+          description: Temporarily Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /products/{ProductIdentifier}:
+    get:
+      tags:
+      - Products
+      description: Get a specific product by its identifier
+      operationId: getSpecificProductUsingGET
+      parameters:
+      - name: ProductIdentifier
+        in: path
+        description: The URL encoded unique identifier for the product
+        required: true
+        schema:
+          type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Product'
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        404:
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        405:
+          description: Method Not Supported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        429:
+          description: Too Many Requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        500:
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        503:
+          description: Temporarily Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /products/{ProductIdentifier}/parametrics:
+    get:
+      tags:
+        - Products
+      description: Get product parametrics data by the unique product identifier
+      operationId: getProductParametricsUsingGET
+      parameters:
+      - name: ProductIdentifier
+        in: path
+        description: The URL encoded unique identifier for the product
+        required: true
+        schema:
+          type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  $ref: '#/components/schemas/Parametric'
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        404:
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        405:
+          description: Method Not Supported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        429:
+          description: Too Many Requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        500:
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        503:
+          description: Temporarily Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+  /products/{ProductIdentifier}/quality:
+    get:
+      tags:
+        - Products
+      description: Get product quality data by the unique product identifier
+      operationId: getProductQualityUsingGET
+      parameters:
+      - name: ProductIdentifier
+        in: path
+        description: The URL encoded unique identifier for the product
+        required: true
+        schema:
+          type: string
+      responses:
+        200:
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ProductQuality'
+        401:
+          description: Unauthorized
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        403:
+          description: Forbidden
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        404:
+          description: Not Found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        405:
+          description: Method Not Supported
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        429:
+          description: Too Many Requests
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        500:
+          description: Internal Server Error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        503:
+          description: Temporarily Unavailable
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+components:
+  schemas:
+    Page<Product>:
+      title: Page<Product>
+      description: A pageable Product response
+      type: object
+      properties:
+        Content:
+          type: array
+          description: The list of products in the requested page
+          items:
+            $ref: '#/components/schemas/Product'
+        First:
+          type: boolean
+          description: Whether or not the returned page is the first page of the matching
+            result set
+          example: true
+        Last:
+          type: boolean
+          description: Whether or not the returned page is the last page of the matching
+            result set
+          example: false
+        Number:
+          type: integer
+          description: The page number that is returned - will match the given Page
+            request parmaeter specified in the request
+          format: int32
+          example: 0
+        NumberOfElements:
+          type: integer
+          description: The number of elements in the current page
+          format: int32
+          example: 1
+        Size:
+          type: integer
+          description: The size of the page - will match the given Size request parametre
+            specified in the request
+          format: int32
+          example: 10
+        TotalElements:
+          type: integer
+          description: The total number of products in the result set (not limited
+            to current page)
+          format: int64
+          example: 1
+        TotalPages:
+          type: integer
+          description: The total number of pages in result set given the specified
+            page size
+          format: int32
+          example: 1
+    PriceData:
+      title: Price
+      description: Price data including a price USD for a corresponding unit count for the purchase
+      type: object
+      properties:
+        Quantity:
+          type: integer
+          description: The unit quantity for which the price value is determined
+          format: int32
+          example: 1000
+        Value:
+          type: number
+          description: The price in dollars per unit
+          format: double
+          example: 1.0
+    Product:
+      title: Product
+      description: Basic product attributes
+      type: object
+      properties:
+        ChangeOrderWindow:
+          type: string
+          description: Window to change order
+          example: STD
+        DatasheetUrl:
+          type: string
+          description: Url for the datasheet for the product
+          example: http://ti.com/lit/gpn/AFE7799
+        Description:
+          type: string
+          description: The description of the product
+          example: Quad-channel RF transceiver with dual feedback paths
+        ExportControlClassificationNumber:
+          type: string
+          description: The Export Control Classification Number (ECCN) for this product
+          example: EAR99
+        ExtendedShelfLife:
+          type: boolean
+          description: Whether or not this product has an extended shelf life
+          example: false
+        FullBoxQty:
+          type: integer
+          description: The product quantity for a full box
+          format: int32
+          example: 126
+        GenericProductIdentifier:
+          type: string
+          description: The unique identifier of the generic part number (a.k.a. Generic
+            Part Identifier). Sometimes referred to as the base part number.
+          example: AFE7799
+        HtsCode:
+          type: string
+          description: The 10-digit Harmornized Tariff Schedule Code for this product
+            - used for customs purposes
+          example: "8542390001"
+        Identifier:
+          type: string
+          description: The unique identifier of the product
+          example: AFE7799IABJ
+        IndustryPackageType:
+          type: string
+          description: The industry standard package type of the product
+          example: NFBGA
+        InventoryStatus:
+          type: string
+          description: Not supported - use TI store inventory and pricing API
+          example: Supported by TI store inventory and pricing API
+        JedecCode:
+          type: string
+          description: The JEDEC code assigned to this package
+          example: S-PBGA-N
+        LeadTimeWeeks:
+          type: string
+          description: The product lead time in weeks
+          example: '8'
+        Length:
+          type: integer
+          description: The length (mm) of the product
+          format: int32
+          example: 15
+        LifeCycleStatus:
+          type: string
+          description: The lifecycle status of the product
+          example: ACTIVE
+        LifetimeBuy:
+          type: boolean
+          description: Whether or not this product is flagged for lifetime buy
+          example: false
+        MaterialContentUrl:
+          type: string
+          description: The URL to the material content site for this product. The
+            page found at this URL will provide quality related information like RoHS,
+            Reach, and IEC 62474 Compliance, as well as a breakdown of the material
+            composition for the product with various standard formats supported.
+          example: http://www.ti.com/materialcontent/en/search?partNumber=AFE7799IABJ&partType=tiPartNumber
+        MaxHeight:
+          type: number
+          description: The max height (mm) of the product
+          format: double
+          example: 1.8
+        MilitaryGoods:
+          type: boolean
+          description: Whether or not this product is used for military goods
+          example: true
+        MinOrderQty:
+          type: integer
+          description: The minimum order quantity (MOQ) of this product
+          format: int32
+          example: 630
+        NextIncrementQty:
+          type: integer
+          description: Incremental quantity for orders of this product
+          format: int32
+          example: 126
+        Obsolete:
+          type: boolean
+          description: Whether or not this product is flagged as obsolete
+          example: false
+        OkayToOrder:
+          type: boolean
+          description: Whether or not this product is okay to order
+          example: true
+        PackageCarrier:
+          type: string
+          description: The carrier for the package
+          example: JEDEC TRAY (10+1)
+        PackageGroup:
+          type: string
+          description: The TI package group for this product
+          example: QFN
+        PackageType:
+          type: string
+          description: The supplier package type of the product
+          example: ZBV
+        Pin:
+          type: integer
+          description: The pin count for the product
+          format: int32
+          example: 289
+        Pitch:
+          type: number
+          description: The pitch (mm) of the product
+          format: double
+          example: 0.8
+        Price:
+          $ref: '#/components/schemas/PriceData'
+        ProductFamilyDescription:
+          type: string
+          description: The description of the product family to which this product
+            belongs
+          example: RF-sampling transceivers
+        QualityEstimatorUrl:
+          type: string
+          description: The URL to the quality estimator site for this product. The
+            page found at this URL will provide quality related information like Defective
+            Parts Per Million (DPPM), Mean Time Between Fails (MTBF), and Failures
+            in Time (FIT) information for this product.
+          example: http://www.ti.com/quality/docs/estimator.tsp?OPN=AFE7799IABJ&partNumber=AFE7799IABJ&partType=tiPartNumber
+        StandardPackQty:
+          type: integer
+          description: The standard package quantity (SPQ) of this product
+          format: int32
+          example: 126
+        StopShip:
+          type: boolean
+          description: Whether or not shipment is currently stopped for this product
+          example: false
+        Thickness:
+          type: number
+          description: The thickness (mm) of the product
+          format: double
+          example: 1.25
+        Url:
+          type: string
+          description: The url of the product folder for this product
+          example: http://www.ti.com/product/AFE7799
+        Width:
+          type: integer
+          description: The width (mm) of the product
+          format: int32
+          example: 15
+    Parametric:
+      title: Parametric
+      description: Parametric specification for a product
+      type: object
+      properties:
+        Description:
+          description: Brief description of the parameter
+          type: string
+        Range:
+          $ref: '#/components/schemas/ParametricRange'
+        Type:
+          description: The parameter type
+          type: string
+        Unit:
+          description: The unit of measurement for the parameter
+          type: string
+        UnitDescription:
+          description: The description of the unit of measurement
+          type: string
+        Value:
+          description: The value - if single value - for the parameter
+          type: string
+    ParametricRange:
+      title: ParametricRange
+      description: The range specifications of a parameter
+      type: object
+      properties:
+        Min:
+          description: The minimum value of the range
+          type: string
+        Max:
+          description: The maximum value of the range
+          type: string
+    ProductQuality:
+      title: ProductQuality
+      description: Product quality data
+      type: object
+      properties:
+        AutomotiveQualification:
+          type: boolean
+          description: The AEC Q10x qualification status of the product
+        CommodityGroup:
+          type: string
+          description: Not supported
+        DieSize:
+          type: string
+          description: Not supported
+        DefectivePartsPerMillion:
+          type: string
+          description: The defective parts per million for the product
+          example: '691'
+        FailuresInTime:
+          type: string
+          description: The failures in time for the product
+          example: '1.0'
+        MeanTimeBetweenFailures:
+          type: string
+          description: The mean time between failures for the product
+          example: '5390000000'
+        ProcessTechnology:
+          type: array
+          description: Not supported
+          items:
+            type: string
+    ErrorResponse:
+      title: ErrorResponse
+      description: ErrorResponse
+      type: object
+      required:
+      - Errors
+      properties:
+        Errors:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/Error'
+    Error:
+      title: Error
+      description: Error
+      type: object
+      required:
+      - Code
+      - Message
+      properties:
+        Code:
+          type: string
+          maximum: 20
+        Message:
+          type: string
+          maximum: 4000
+  securitySchemes:
+    Oauth:    # <---- arbitrary name
+      type: oauth2
+      description: 'This API uses OAuth 2 with the Client Credentials. More Information availible here: https://api-portal.ti.com/oauth-setup/'
+      flows:
+        clientCredentials: 
+          tokenUrl: https://transact.ti.com/v1/oauth
+          scopes: {}

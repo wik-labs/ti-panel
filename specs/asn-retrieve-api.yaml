@@ -1,0 +1,1322 @@
+openapi: 3.0.3
+info:
+  title: Advanced ship notice (ASN) retrieve API
+  description: This API allows a user to retrieve detailed information regarding your shipment such as shipment tracking number, 
+        carrier information, and commercial invoice.
+  version: 2.0.0
+  contact:
+    name: API Support
+    url: https://www.ti.com/developer-api/support.html
+servers:
+  - url: 'https://transact.ti.com/v2'
+    description: External Production API Gateway
+
+security:
+  - OAuth2: []
+tags:
+- name: Advanced ship notice (test)
+- name: Advanced ship notice
+paths:
+  /store/orders/{orderNumber}/advanced-shipment-notices/test:
+    get:
+      description: Retrieves test ASN details for a given TI sales order number for a specific customer. 
+      tags:
+        - Advanced ship notice (test)
+      security:
+        - OAuth2: [] 
+      parameters:
+      - name: orderNumber
+        in: path
+        description: TI sales order number
+        required: true
+        style: simple
+        explode: false      
+        schema:   
+          type: string
+        example: 'T10999999'  
+      - name: requestCommercialInvoicePDF
+        in: query
+        description: "If a value of true is passed in requestCommercialInvoicePDF, the response would\
+          \ contain base64 encoded string of Commercial Invoice PDF document in field supplierCommercialInvoicePDF"
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: boolean
+          example: true
+          enum:
+          - true
+          - false
+          default: false
+        example: true  
+      - name: requestWaybillPDF 
+        in: query
+        description: "If a value of true is passed in requestWaybillPDF, the response would\
+          \ contain base64 encoded string of Waybill PDF document in field supplierWaybillPDF"
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: boolean
+          example: true
+          enum:
+          - true
+          - false
+          default: false
+        example: true                         
+      responses:
+        '200':
+          description: Request processed successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ASNRetrieveResponse'
+        '400':         
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotSupported'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/TemporarilyUnavailable'       
+  /store/orders/{orderNumber}/advanced-shipment-notices/{wayBillNumber}/test:
+    get:
+      description: Retrieves test ASN details for a given TI sales order number and wayBillNumber 
+        for a specific customer. For test, the waybillNumber parameter value should always be passed as '0499999999'
+      tags:
+        - Advanced ship notice (test)
+      security:
+        - OAuth2: [] 
+      parameters:
+      - name: orderNumber
+        in: path
+        description: TI sales order number
+        required: true
+        style: simple
+        explode: false      
+        schema:   
+          type: string
+        example: 'T10999999'  
+      - name: wayBillNumber
+        in: path
+        description: TI waybill number
+        required: true
+        style: simple
+        explode: false      
+        schema:
+          type: string
+          default: 0499999999
+        example: 0499999999
+      - name: requestCommercialInvoicePDF
+        in: query
+        description: "If a value of true is passed in requestCommercialInvoicePDF, the response would\
+          \ contain base64 encoded string of Commercial Invoice PDF document in field supplierCommercialInvoicePDF"
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: boolean
+          example: true
+          enum:
+          - true
+          - false
+          default: false
+        example: true  
+      - name: requestWaybillPDF 
+        in: query
+        description: "If a value of true is passed in requestWaybillPDF, the response would\
+          \ contain base64 encoded string of Waybill PDF document in field supplierWaybillPDF"
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: boolean
+          example: true
+          enum:
+          - true
+          - false
+          default: false
+        example: true                         
+      responses:
+        '200':
+          description: Request processed successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ASNRetrieveResponse'
+        '400':         
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotSupported'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/TemporarilyUnavailable'  
+  /store/orders/{orderNumber}/advanced-shipment-notices:
+    get:
+      description: Retrieves all ASN details for a given TI sales order number for a specific customer.
+      tags:
+        -  Advanced ship notice
+      security:
+        - OAuth2: [] 
+      parameters:
+      - name: orderNumber
+        in: path
+        description: TI sales order number
+        required: true
+        style: simple
+        explode: false      
+        schema:   
+          type: string
+        example: 'T10999999'          
+      - name: requestCommercialInvoicePDF
+        in: query
+        description: "If a value of true is passed in requestCommercialInvoicePDF, the response would\
+          \ contain base64 encoded string of Commercial Invoice PDF document in field supplierCommercialInvoicePDF"
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: boolean
+          example: true
+          enum:
+          - true
+          - false
+          default: false
+        example: true  
+      - name: requestWaybillPDF 
+        in: query
+        description: "If a value of true is passed in requestWaybillPDF, the response would\
+          \ contain base64 encoded string of Waybill PDF document in field supplierWaybillPDF"
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: boolean
+          example: true
+          enum:
+          - true
+          - false
+          default: false
+        example: true                         
+      responses:
+        '200':
+          description: Request processed successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ASNRetrieveResponse'
+        '400':         
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotSupported'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/TemporarilyUnavailable'                           
+  /store/orders/{orderNumber}/advanced-shipment-notices/{wayBillNumber}:
+    get:
+      description: Retrieves ASN details for a given TI sales order number and wayBillNumber for a specific customer. You can find an orderĂ˘âŹâ˘s waybill number(s) by sending a GET ASN API request without the waybillNumber parameter (<a href="/store-asn-retrieve-api#/Advanced%20ship%20notice/get_store_orders__orderNumber__advanced_shipment_notices" target="_blank">described above</a>) or the <a href="http://www.ti.com/orderhistory/" target="_blank">myTI order history page</a> after an order ships.
+      tags:
+        -  Advanced ship notice
+      security:
+        - OAuth2: [] 
+      parameters:
+      - name: orderNumber
+        in: path
+        description: TI sales order number
+        required: true
+        style: simple
+        explode: false      
+        schema:   
+          type: string
+        example: 'T10999999'  
+      - name: wayBillNumber
+        in: path
+        description: TI waybill number
+        required: true
+        style: simple
+        explode: false      
+        schema:
+          type: string
+        example: '0499999999'         
+      - name: requestCommercialInvoicePDF
+        in: query
+        description: "If a value of true is passed in requestCommercialInvoicePDF, the response would\
+          \ contain base64 encoded string of Commercial Invoice PDF document in field supplierCommercialInvoicePDF"
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: boolean
+          example: true
+          enum:
+          - true
+          - false
+          default: false
+        example: true  
+      - name: requestWaybillPDF 
+        in: query
+        description: "If a value of true is passed in requestWaybillPDF, the response would\
+          \ contain base64 encoded string of Waybill PDF document in field supplierWaybillPDF"
+        required: false
+        style: form
+        explode: true
+        schema:
+          type: boolean
+          example: true
+          enum:
+          - true
+          - false
+          default: false
+        example: true                         
+      responses:
+        '200':
+          description: Request processed successfully.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ASNRetrieveResponse'
+        '400':         
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '405':
+          $ref: '#/components/responses/MethodNotSupported'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+        '500':
+          $ref: '#/components/responses/InternalServerError'
+        '503':
+          $ref: '#/components/responses/TemporarilyUnavailable'               
+components:
+  responses:
+    Okay:
+      description: Normal Response
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ASNRetrieveResponse'
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+              example:
+                errors:
+                - errorCode: ERR-TICOM-ASNR-API-0400
+                  type: Validation
+                  section: Path
+                  message: "The path parameter orderNumber cannot be null or empty."              
+                - errorCode: ERR-TICOM-ASNR-API-0400
+                  type: Validation
+                  section: Path
+                  message: "The path parameters orderNumber, wayBillNumber cannot be null or empty."
+                - errorCode: ERR-TICOM-ASNR-API-0400
+                  type: Validation
+                  section: Path                
+                  message: orderNumber - 87644567 must begin with 'T'.
+                - errorCode: ERR-TICOM-ASNR-API-0400
+                  type: Validation
+                  section: Path 
+                  message: orderNumber - T1234567 must be 9 characters in length.
+                - errorCode: ERR-TICOM-ASNR-API-0400
+                  type: Validation
+                  section: Path 
+                  message: waybillNumber - T04987431234 must be numeric.
+                - errorCode: ERR-TICOM-ASNR-API-0400
+                  type: Validation
+                  section: Path 
+                  message: waybillNumber - 042842325 must be 9 characters in length.  
+                - errorCode: ERR-TICOM-ASNR-API-40060
+                  type: Validation
+                  section: QueryParameter 
+                  message: requestCommercialInvoicePDF - X must be true or false. 
+                - errorCode: ERR-TICOM-ASNR-API-40060
+                  type: Validation
+                  section: QueryParameter 
+                  message: requestWaybillPDF - X must be true or false.                                                                                
+    Unauthorized:
+      description: Unauthorized
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            errors:
+            - errorCode: TI-API-0401
+              type: Security
+              reason: Invalid Credentials                
+              message: "Your Access Token has Expired. Please refresh your token.\
+                  \ For more information, please see: https://api-portal.ti.com/oauth-setup/"             
+    NotFound:
+      description: Not Found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:                    
+            errors:
+            - errorCode: TI-API-0404
+              type: ResourceNotFound
+              reason: Invalid path
+              message: No API endpoint ('/order/T2345/advanced-shipping-notification/053434') found. See documentation of this API. 
+            - errorCode: ERR-TICOM-ASNR-API-0404
+              type: ResourceNotFound
+              reason: Resource not found.
+              message: Verify the orderNumber and wayBillNumber and resubmit the request.                            
+    MethodNotSupported:
+      description: Method Not Supported
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:                    
+            errors:
+            - errorCode: TI-API-0405
+              type: ResourceNotFound
+              reason: Invalid method
+              message: POST is not a supported method. See documentation around this API at https://api-portal.ti.com/apis.              
+    TooManyRequests:
+      description: Too Many Requests
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:                    
+            errors:
+            - errorCode: TI-API-0429
+              type: Security
+              reason: Too many requests.
+              message: Rate Limit Quota exceeded. Please reduce the rate of requests. If issue persists, please contact support (https://api-portal.ti.com/support).               
+    InternalServerError:
+      description: Internal Server Error
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:                
+            errors:
+            - errorCode: TI-API-0500
+              type: Unknown
+              reason: Service unavailable
+              message: System error occurred, please contact support.
+            - errorCode: ERR-TICOM-ASNR-API-0500
+              type: Unknown
+              reason: Service unavailable
+              message: "System error occurred, please contact support. Execution ID: execution-304816a1-a1e1-41e7-9214-59e872a3eeb5-2020.05.19"                           
+    TemporarilyUnavailable:
+      description: Temporarily Unavailable
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+          example:
+            errors:
+            - errorCode: TI-API-0503
+              type: Security
+              reason: Service unavailable                
+              message: This service is temporarily unavailable. Please contact support.
+            - errorCode: ERR-TICOM-ASNP-API-ERP-0503
+              type: Security
+              reason: Service unavailable                
+              message: This service is temporarily unavailable. Please contact support.                
+            - errorCode: ERR-TICOM-ASNP-API-STR-0503
+              type: Security
+              reason: Service unavailable
+              message: This service is temporarily unavailable. Please contact support.                         
+  securitySchemes:
+    OAuth2:
+      type: 'oauth2'
+      description: >-
+        This API uses OAuth 2 with Client Credentials. See https://api-portal.ti.com/order-api-authentication
+      flows:
+        clientCredentials: 
+          refreshUrl: 'https://transact.ti.com/v1/oauth'
+          tokenUrl : 'https://transact.ti.com/v1/oauth'
+          scopes: {}
+  schemas:
+    ASNRetrieveResponse:
+      description: Advanced Ship Notification retrieve response root object
+      type: object
+      properties:
+        orderNumber:
+          type: string  
+          description: Sales order number associated with the shipment
+          example: 'T01999999'
+        wayBillNumber:
+          type: string
+          description:  Supplier waybill shipment number
+          example: '0499999999'
+        requestCommercialInvoicePDF:
+          type: string
+          description: Whether to include commercial invoice PDF content in the response if available
+          example: false
+        requestWaybillPDF:
+            type: boolean
+            description: Whether to include waybill PDF content in the response if available
+            example: false
+        data:
+          type: object
+          properties:
+            consolidatedInformation:
+              type: array
+              minItems: 1
+              items:
+                $ref: "#/components/schemas/ConsolidatedInformation"
+
+    ConsolidatedInformation:
+      type: object
+      properties:
+        estimatedDateOfArrival:
+          type: string
+          description: Date when shipment is estimated to arrive at the destination (UTC, YYYY-MM-DD)
+          format: date
+          example: 2021-04-13
+        goodsIssueDate:
+          type: string
+          description: Date when shipment goods are issued or processed to ship (UTC, YYYY-MM-DD)
+          format: date
+          example: 2021-04-09
+        numberOfPallet:
+          type: string
+          description: Shipment number of pallets
+          format: int32
+          example: '1'
+        grossWeight:
+          type: string
+          description: Shipment gross weight including packaging material
+          format: decimal
+          example: '2.450'
+        grossWeightUnitOfMeasure:
+          type: string
+          description: Shipment gross weight unit of measure
+          example: KG
+        numberOfPieces:
+          type: string
+          description: Shipment number of boxes or cartons
+          format: int32
+          example: '2'
+        netWeight:
+          type: string
+          description: Shipment weight of the product (gross weight minus packaging material weight)
+          format: decimal
+          example: '0.264'
+        netWeightUnitOfMeasure:
+          type: string
+          description: Net weight unit of measure
+          example: KG
+        serviceLevelCode:
+          type: string
+          description: Carrier shipping service level code
+          example: ABC
+        productDescription:
+          type: string
+          description: Shipment product/material description
+          example: ABC DEF GHI
+        carrierShipmentMasterTrackingNumber:
+          type: string
+          description: Carrier shipment master tracking number
+          example: '123456'
+        carrierShipmentBoxTrackingNumber:
+          type: string
+          description: Carrier shipment box tracking number
+          example: CUSTOMER XLR8
+        shipDate:
+          type: string
+          description: Supplier processed shipment - actual goods issue date (UTC, YYYY-MM-DD)
+          format: date
+          example: 2021-04-09
+        shippingPoint:
+          type: string
+          description: Supplier shipping plant or location 
+          example: '1808'
+        shippingCondition:
+          type: string
+          description: Shipping conditions, determined by carrier services and shipping points
+          example: EG
+        soldToIdentifier:
+          type: string
+          description: Supplier customer sold-to
+          example: '0000123456'
+        specialProcessingIndicator:
+          type: string
+          description: Special carrier processing like bulk, air, etc. used for expedites in the future
+        modeOfTransport:
+          type: string
+          description: How the shipment is transported (i.e. sea, land, air, truck, train)
+          example: '05'
+        buyerCode:
+          type: string
+          description: Unique buyer code to be provided by the customer
+          example: '12345'
+        vendorCode:
+          type: string
+          description: Unique code that designates the shipper
+          example: ABCDEFG
+        shipTrackReference:
+          type: string
+          description: Supplier ship track reference
+          example: '123456789012'
+        soldToPartyName:
+          type: string
+          description: Supplier sold-to party name
+          example: CUSTOMER CORPORATION
+        shipmentInternalTransactionNumberList:
+              type: array
+              minItems: 1
+              items:
+                $ref: '#/components/schemas/ShipmentInternalTransactionNumber'
+
+        forwardingAgentDetails:
+          type: object
+          description: Forwarding agent detail
+          properties:
+            companyName:
+              type: string
+              description: Shipper carrier name (i.e. FedEx, UPS, DB Schenker)
+              example: XYZ
+            standardCarrierAccessCode:
+              type: string
+              description: Shipper carrier code - Standard Carrier Alpha Code (SCAC)
+              example: ABCD
+            carrierIdentifier:
+              type: string
+              description: Supplier Code - Forwarder ZCAR
+              example: '12345'
+            carrierTrackingWebSite:
+              type: string
+              description: Supplier carrier tracking web site
+              example: https://www.carrierxyz.com
+        wayBillNumberList:
+              type: array
+              minItems: 1
+              items:
+                $ref: '#/components/schemas/WayBill'
+        commercialInvoicelist:
+              type: array
+              minItems: 1
+              items:
+                $ref: '#/components/schemas/CommercialInvoice'
+        shipToDetails:
+          type: object
+          description: Ship-to party details
+          properties:
+            plantIdentifier:
+              type: string
+              description: Customer ship-to plant identifier (Plant or Location)
+              example: '00001234'
+            companyName: 
+              type: string
+              description: Customer ship-to company name
+              example: XYZ
+            contactName:
+              type: string
+              description: Customer ship-to contact name 
+              example: 010-234-2010
+            address1:
+              type: string
+              description: Customer ship-to address 1
+              example: 123 Main St
+            address2:
+              type: string
+              description: Customer ship-to address 2
+              example: ABC
+            city:
+              type: string
+              description: Customer ship-to city
+              example: Fort Worth
+            state:
+              type: string
+              description: Customer ship-to state
+              example: TX
+            zipCode:
+              type: string
+              description: Customer ship-to zip code
+              example: 12345-1234
+            country:
+              type: string
+              description: Customer ship-to country
+              example: US
+            companyNameAdditionalDetail:
+              type: string
+              description: Customer ship-to company name additional detail
+              example: ABCD
+        shipFromDetails:
+          type: object
+          description: Ship from party details
+          properties:
+            plantIdentifier:
+              type: string
+              description: Supplier ship-from plant code or location 
+              example: '00001234'
+            companyName: 
+              type: string
+              description: Supplier ship-from company name
+              example: Texas Instruments
+            contactName:
+              type: string
+              description: Supplier ship-from contact name
+              example: 010-234-2010
+            address1:
+              type: string
+              description: Supplier ship-from address1
+              example: 13601 Independence Parkway
+            address2:
+              type: string
+              description: Supplier ship-from address2
+              example: ABC
+            city:
+              type: string
+              description: Supplier ship-from city
+              example: Fort Worth
+            state:
+              type: string
+              description: Supplier ship-from state
+              example: TX
+            zipCode:
+              type: string
+              description: Supplier ship-from zip code
+              example: 12345-1234
+            country:
+              type: string
+              description: Supplier ship-from country
+              example: US
+            email:
+              type: string
+              description: Supplier ship-from email address
+              example: test@test.com
+            phoneNumber: 
+              type: string
+              description: Supplier ship-from phone Number
+              example: 010-101-2031
+        crossDockDetails:
+          type: object
+          description: Supplier cross dock details
+          properties:
+            plantIdentifier:
+              type: string
+              description: Supplier cross dock plant code or airport code
+              example: '00001234'
+            companyName: 
+              type: string
+              description: Supplier cross dock company Name
+              example: XYZ
+            contactName:
+              type: string
+              description: Supplier cross dock contact name 
+              example: 010-234-2010
+            address1:
+              type: string
+              description: Supplier cross dock address1
+              example: 123 Main St
+            address2:
+              type: string
+              description: Supplier cross dock address2
+              example: ABC
+            city:
+              type: string
+              description: Supplier cross dock city
+              example: Fort Worth
+            state:
+              type: string
+              description: Supplier cross dock state
+              example: TX
+            zipCode:
+              type: string
+              description: Supplier cross dock zip code
+              example: 12345-1234
+            country:
+              type: string
+              description: Supplier cross dock country
+              example: US
+        importerDetails:
+          type: object
+          description: Importer details
+          properties:
+            companyName: 
+              type: string
+              description: Ultimate Consignee or Importer of Record (IOR) company name
+              example: XYZ
+            contactName:
+              type: string
+              description: Ultimate Consignee or Importer of Record contact name
+              example: 010-234-2010
+            address1:
+              type: string
+              description: Ultimate Consignee or Importer of Record address1
+              example: 13601 Independence Parkway
+            address2:
+              type: string
+              description: Ultimate Consignee or Importer of Record address2
+              example: ABC
+            city:
+              type: string
+              description: Ultimate Consignee or Importer of Record city
+              example: Fort Worth
+            state:
+              type: string
+              description: Ultimate Consignee or Importer of Record state
+              example: TX
+            zipCode:
+              type: string
+              description: Ultimate Consignee or Importer of Record zip code
+              example: 12345-1234
+            country:
+              type: string
+              description: Ultimate Consignee or Importer of Record country
+              example: US
+        manifestIdentifierList:
+          type: object
+          description: Manifest key number list
+          properties:
+            manifestidentifier: 
+              type: string
+              description: Supplier system generated unique number assigned to a Bill of Landing
+              example: '7890123456'
+        bookingOrderDetails:
+              type: array
+              minItems: 1
+              items:
+                $ref: "#/components/schemas/BookingOrderDetails"
+    ShipmentInternalTransactionNumber:
+      type: object
+      properties:
+        shipmentInternalTransactionNumber:
+          type: string
+          description: The Internal Transaction Number is an Automated Export System (AES) generated number assigned to a shipment confirming that the EEI was accepted and is on file in the AES. This number should be placed on any loading document to allow the Customs and Border Protection (CBP) officer the ability to retrieve the shipment, if needed.
+          example: '1234'
+    WayBill:
+      description: Supplier waybill (shipment details including carrier, shipment route, shipping method, service level, etc.)
+      type: object
+      properties:
+        wayBillNumber:
+          type: string
+          description:  Unique waybill shipment number / tracking number
+          example: '5678901234'
+        wayBillCreationDate:
+          type: string
+          description: Waybill shipment created date - actual shipment start date (UTC, YYYY-MM-DD)
+          format: date
+          example: 2021-04-08
+        wayBillCreationTime:
+          type: string
+          description: Waybill shipment created Time - actual shipment start time (UTC, HH:MM:SS)
+          format: time
+          example: '09:15:08'
+        waybillPDF:
+          type: string
+          description: Waybill PDF content (base64 encoded string)
+    CommercialInvoice:
+      description: Supplier commercial invoice
+      type: object
+      properties:
+        commercialInvoiceNumber:
+          type: string
+          description: Commercial invoice used by customs in determining customs duties and to clear custom shipments.
+          example: '987654321'
+        commercialInvoiceDate:
+          type: string
+          description: Invoice create date (UTC, YYYY-MM-DD)
+          format: date
+          example: 2021-04-08
+        commercialInvoiceTime:
+          type: string
+          description: Invoice create time (UTC, HH:MM:SS)
+          format: time
+          example: '22:32:40'
+        commercialIncotermCode:
+          type: string
+          description: Incoterm value that specifies who is responsible for paying for and managing the shipment, insurance, documentation, customs clearance, and other logistical activities.
+          example: DDP
+        commercialIncotermDescription:
+          type: string
+          description: Description of incoterm value that specifies who is responsible for paying for and managing the shipment, insurance, documentation, customs clearance, and other logistical activities.
+          example: Buyers Dock
+        commercialInvoiceValue:
+          type: string
+          description: Invoice value of goods purchased
+          format: decimal
+          example: '100.100'
+        commercialInvoiceCurrency:
+          type: string
+          description: Supplier currency used for the invoice amount
+          example: USD
+        commercialInvoicePDF:
+          type: string
+          description: Commercial invoice PDF content (base64 encoded string)
+    BookingOrderDetails:
+      description: Booking order details
+      type: object
+      properties:
+        customerPurchaseOrderIdentifier:
+          type: string
+          description: Customer purchase order number
+          example: T1234567
+        purchaseOrderDate:
+          type: string
+          description: Create date of purchase order (UTC, YYYY-MM-DD)
+          format: date
+          example: 2021-02-28
+        passThrus:
+            type: array
+            minItems: 1
+            items:
+              $ref: "#/components/schemas/PassThru"
+        packageDetails:
+            type: array
+            minItems: 1
+            items:
+              $ref: "#/components/schemas/Package"
+    
+    PassThru:
+      type: object
+      properties:
+        orderNumber:
+          type: string
+          description: Supplier sales order number associated with shipment
+          example: '1234567890'
+        passthru1:
+          type: string
+          description: Customer specific data that needs to be sent back to customer in API Response
+          example: ZREF*00001*URL=www.test.com
+        passthru2:
+          type: string
+          description: Customer specific data that needs to be sent back to customer in API Response
+          example: ZREF*00002*URL=www.test.com
+        passthru3:
+          type: string
+          description: Customer specific data that needs to be sent back to customer in API Response
+          example: ZREF*00003*URL=www.test.com
+        passthru4:
+          type: string
+          description: Customer specific data that needs to be sent back to customer in API Response
+          example: ZREF*00004*URL=www.test.com
+        passthru5:
+          type: string
+          description: Customer specific data that needs to be sent back to customer in API Response
+          example: ZREF*00005*URL=www.test.com
+        passthru6:
+          type: string
+          description: Customer specific data that needs to be sent back to customer in API Response
+          example: ZREF*00006*URL=www.test.com
+        passthru7:
+          type: string
+          description: Customer specific data that needs to be sent back to customer in API Response
+          example: ZREF*00007*URL=www.test.com
+        passthru8:
+          type: string
+          description: Customer specific data that needs to be sent back to customer in API Response
+          example: ZREF*00008*EML=test@test.com
+        passthru9:
+          type: string
+          description: Customer specific data that needs to be sent back to customer in API Response
+          example: ZREF*00009*URL=www.test.com
+        passthru10:
+          type: string
+          description: Customer specific data that needs to be sent back to customer in API Response
+          example: ZREF*00010*URL=www.test.com
+        passthru11:
+          type: string
+          description: Customer specific data that needs to be sent back to customer in API Response
+          example: ZREF*00011*URL=www.test.com
+        passthru12:
+          type: string
+          description: Customer specific data that needs to be sent back to customer in API Response
+          example: ZREF*00012*EML=test@test.com
+        passthru13:
+          type: string
+          description: Customer specific data that needs to be sent back to customer in API Response
+          example: ZREF*00013*URL=www.test.com
+        passthru14:
+          type: string
+          description: Customer specific data that needs to be sent back to customer in API Response
+          example: ZREF*00014*URL=www.test.com
+        passthru15:
+          type: string
+          description: Customer specific data that needs to be sent back to customer in API Response
+          example: ZREF*00015*URL=www.test.com
+    Package:
+      type: object
+      properties:
+        handlingUnitIdentifier:
+          type: string
+          description: Container unique identifier - license plate for that box
+          example: '1234567890'
+        containerVolume:
+          type: string
+          description: Package container volume
+          format: decimal
+          example: '0.000'
+        containerVolumeUnitOfMeasure:
+          type: string
+          description: Package container volume unit of measure
+          example: 'CDM'
+        length:
+          type: string
+          description: Package length
+          format: decimal
+          example: '0.000'
+        width:
+          type: string
+          description: Package width
+          format: decimal
+          example: '0.000'
+        height:
+          type: string
+          description: Package height
+          format: decimal
+          example: '0.000'
+        LWHUnitOfMeasure:
+          type: string
+          description: Package unit of measure for length, width, and height
+          example: MM
+        trackingNumber:
+          type: string
+          description: Package tracking number
+          example: '123456789012'
+        numberOfLineItems:
+          type: string
+          description: Package number of line items
+          format: Int32
+          example: '0'
+        alternateHandlingUnitNumber:
+          type: string
+          description: Contains alternate handling unit number
+          example: 'ABCDEFGH'
+        netWeight:
+          type: string
+          description: Package net weight
+          format: decimal
+          example: '0.000'
+        grossWeight:
+          type: string
+          description: Package gross weight
+          format: decimal
+          example: '0.000'
+        weightUnitOfMeasure:
+          type: string
+          description: Package weight unit of measure
+          example: KG
+        itemDetails:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/Item"
+    Item:
+      type: object
+      properties:
+        tiPartNumber:
+          type: string
+          description: Supplier Material Number
+          example: TPS12345
+        CustomerProductNumber:
+          type: string
+          description: Customer Part Number (CPN)
+          example: ABCDEFG
+        productDescription:
+          type: string
+          description: Supplier Material Description
+          example: TPS12345 description
+        deliveryLineItemNumber:
+          type: string
+          description: Supplier delivery line item number
+          example: '000010'
+        deliveryDocumentNumber:
+          type: string
+          description: Delivery document number created for the order line item
+          example: '0123456789'
+        orderNumber:
+          type: string
+          description: Supplier sales order number
+          example: 'T02281839'
+        orderLineItemNumber:
+          type: string
+          description: Supplier sales order item number
+          example: '000010'
+        customerPurchaseOrderNumber:
+          type: string
+          description: Customer purchase order number
+          example: T1234567
+        customerPurchaseOrderItemNumber:
+          type: string
+          description: Customer purchase order item number
+          example: '2'
+        purchaseOrderDate:
+          type: string
+          description: Customer purchase order date (UTC, YYYY-MM-DD)
+          format: date
+          example: 2021-02-28
+        numberOfUnitsShipped:
+          type: string
+          description: Number of products being shipped
+          example: '000000000001'
+        baseUnitOfMeasure:
+          type: string
+          description: Supplier item base unit of measure
+          example: EA
+        grossWeight:
+          type: string
+          description: Weight of the item including shipment package
+          format: decimal
+          example: '1.450'
+        netWeight:
+          type: string
+          description: Weight of the item (gross weight minus packaging material weight)
+          format: decimal
+          example: '0.165'
+        weightUnitOfMeasure:
+          type: string
+          description: Item weight unit of measure
+          example: KG
+        commercialInvoiceNumber:
+          type: string
+          description: Supplier commercial invoice number
+          example: '987654321'
+        commercialInvoiceItem:
+          type: string
+          description: Supplier commercial invoice item
+          example: '000001'
+        commercialInvoiceUnitprice:
+          type: string
+          description: Supplier commercial invoice unit price
+          format: decimal
+          example: '123.000000'
+        commercialInvoiceValue:
+          type: string
+          description: Supplier commercial invoice value
+          format: decimal
+          example: '123.000000'
+        commercialInvoiceCurrency:
+          type: string
+          description: Supplier commercial invoice currency
+          example: USD
+        countryOfOriginCode:
+          type: string
+          description: Supplier country of origin code
+          example: PH
+        countryOfOriginDescription:
+          type: string
+          description: Supplier country of origin description
+          example: Philippines
+        assemblyCountryOfOriginCode3Character:
+          type: string
+          description: Supplier assembly country of origin code (3 characters)
+          example: PHL
+        assemblyCountryOfOriginCode2Character:
+          type: string
+          description: Supplier assembly country of origin code (2 characters)
+          example: PH
+        assemblyCountryOfOriginDescription:
+          type: string
+          description: Supplier assembly country of origin description
+          example: Philippines
+        harmonizedTariffScheduleExportCode:
+          type: string
+          description: Supplier item harmonized tariff schedule export code
+          example: '8901234567'
+        harmonizedTariffScheduleExportDescription:
+          type: string
+          description: Supplier item harmonized tariff schedule export description
+          example: Electronic Integrated Circuits, Other
+        harmonizedTariffScheduleImportCode:
+          type: string
+          description: Supplier item harmonized tariff schedule import code
+          example: '8901234567'
+        harmonizedTariffScheduleImportDescription:
+          type: string
+          description: Supplier item harmonized tariff schedule export description
+          example: Electronic Integrated Circuits, Other
+        confirmDate:
+          type: string
+          description: Supplier item confirm date (UTC, YYYY-MM-DD)
+          example: 2021-04-09
+        orderType:
+          type: string
+          description: Supplier order type
+          example: ZJR
+        deliveryLineItemTotalQuantity:
+          type: string
+          description: Supplier delivery line item total quantity
+          example: '24000.000'
+        deliveryLineItemTotalQuantityUnitOfMeasure:
+          type: string
+          description: Supplier delivery line item total quantity unit of measure
+          example: EA
+        goodsIssueDate:
+          type: string
+          description: Supplier item goods issue date (UTC, YYYY-MM-DD)
+          example: 2021-04-09
+        goodsIssueTime:
+          type: string
+          description: Supplier item goods issue time (UTC, HH:MM:SS)
+          example: '05:23:19'
+        passThru1:
+          type: string
+          description: Customer item pass thru
+          example: ZOI6*00001*GUID=DE14935C47D74658E10000000AB490BB/010/20191008130206
+        passThru2:
+          type: string
+          description: Customer item pass thru
+          example: ZOI6*00002*GUID=DE14935C47D74658E10000000AB490BB/010/20191008130206
+        passThru3:
+          type: string
+          description: Customer item pass thru
+          example: ZOI6*00003*GUID=DE14935C47D74658E10000000AB490BB/010/20191008130206
+        passThru4:
+          type: string
+          description: Customer item pass thru
+          example: ZOI6*00004*GUID=DE14935C47D74658E10000000AB490BB/010/20191008130206
+        passThru5:
+          type: string
+          description: Customer item pass thru
+          example: ZOI6*00005*GUID=DE14935C47D74658E10000000AB490BB/010/20191008130206
+        passThru6:
+          type: string
+          description: Customer item pass thru
+          example: ZOI6*00006*GUID=DE14935C47D74658E10000000AB490BB/010/20191008130206
+        passThru7:
+          type: string
+          description: Customer item pass thru
+          example: ZOI6*00007*GUID=DE14935C47D74658E10000000AB490BB/010/20191008130206
+        passThru8:
+          type: string
+          description: Customer item pass thru
+          example: ZOI6*00008*GUID=DE14935C47D74658E10000000AB490BB/010/20191008130206
+        passThru9:
+          type: string
+          description: Customer item pass thru
+          example: ZOI6*00009*GUID=DE14935C47D74658E10000000AB490BB/010/20191008130206
+        passThru10:
+          type: string
+          description: Customer item pass thru
+          example: ZOI6*00010*GUID=DE14935C47D74658E10000000AB490BB/010/20191008130206
+        passThru11:
+          type: string
+          description: Customer item pass thru
+          example: ZOI6*00011*GUID=DE14935C47D74658E10000000AB490BB/010/20191008130206
+        passThru12:
+          type: string
+          description: Customer item pass thru
+          example: ZOI6*00012*GUID=DE14935C47D74658E10000000AB490BB/010/20191008130206
+        passThru13:
+          type: string
+          description: Customer item pass thru
+          example: ZOI6*00013*GUID=DE14935C47D74658E10000000AB490BB/010/20191008130206
+        passThru14:
+          type: string
+          description: Customer item pass thru
+          example: ZOI6*00014*GUID=DE14935C47D74658E10000000AB490BB/010/20191008130206
+        passThru15:
+          type: string
+          description: Customer item pass thru
+          example: ZOI6*00015*GUID=DE14935C47D74658E10000000AB490BB/010/20191008130206
+        shipTrackCodeList:
+          type: array
+          minItems: 1
+          items:
+            $ref: "#/components/schemas/ShipTrackCode"
+    ShipTrackCode:
+      type: object
+      properties:
+        shipTrackCode:
+          type: string
+          description: Supplier ship track code
+          example: 012345ABC
+        alternateShipTrackCode:
+          type: string
+          description: Supplier alternate ship track code
+          example: HIJKLM
+        chipCountryOfOriginCode3Character:
+          type: string
+          description: Supplier chip country of origin code (3 characters)
+          example: USA
+        chipCountryOfOriginCode2Character:
+          type: string
+          description: Supplier chip country of origin code (2 characters)
+          example: US
+        chipCountryOfOriginDescription:
+          type: string
+          description: Supplier chip country of origin description
+          example: USA
+        shipTrackCodeQuantity:
+          type: string
+          description: Supplier item ship track code quantity
+          example: '3000'
+        batchNumber:
+          type: string
+          description: Supplier batch number
+          example: 1234567PHI
+        shipDate:
+          type: string
+          description: Supplier ship date (UTC, YYYY-MM-DD)
+          example: 2021-04-08
+        dateCode:
+          type: string
+          description: Supplier date code
+          example: '2110'
+        boxCount:
+          type: string
+          description: Supplier box count
+          example: '2'           
+        alternateTrackingNumber:
+          type: string
+          description: Supplier alternate tracking identifier
+          example: ABCDEFGHIJK
+    Error:
+      title: Error
+      description: >-
+        Standard error response
+      type: object  
+      properties:
+        errors:
+          type: array
+          items:
+            $ref: '#/components/schemas/ErrorDetail'
+    ErrorDetail:
+      type: object
+      properties:
+        errorCode:
+          type: string
+          description: Unique code for the error returned.
+          example: ERR-TICOM-ASNR-API-0400
+        type:
+          type: string 
+          description: Classification of the error.
+          example: Validation           
+        section:
+          type: string
+          description: Provides the section of the request violating field can be found, if applicable.
+          example: shipFromDetails          
+        field:
+          type: string 
+          description: Name of the field that failed validation, if applicable.
+          example: orderNumber             
+        reason:
+          type: string 
+          description: The reason for the error. Details why the request was rejected.
+          example: Invalid orderNumber                                              
+        message:
+          type: string
+          description: Details of the specific error and the actions to take to resolve.
+          example: orderNumber is not valid. Please provide a valid orderNumber
