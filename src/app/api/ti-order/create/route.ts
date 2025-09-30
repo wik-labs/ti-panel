@@ -3,7 +3,7 @@ import { getAccessToken } from '@/lib/ti-oauth';
 
 export const runtime = 'nodejs';
 
-/** ───────── helpers: base & mode ───────── */
+/* ───── base & mode ───── */
 function computeOrdersBase(): string {
   const explicit = process.env.TI_ORDER_BASE;
   if (explicit) return explicit.replace(/\/+$/, '');
@@ -15,7 +15,6 @@ function computeOrdersBase(): string {
 
   return `${storeBase.replace(/\/+$/, '')}/v2/store/orders`;
 }
-
 function isTestMode(bodyMode?: string): boolean {
   const envMode =
     (process.env.TI_ORDER_MODE ||
@@ -25,7 +24,7 @@ function isTestMode(bodyMode?: string): boolean {
   return mode === 'test';
 }
 
-/** ───────── helpers: normalize ───────── */
+/* ───── normalize helpers ───── */
 function looksLikeProfileId(v: unknown): boolean {
   const s = String(v ?? '');
   return s.length >= 24 && /^[A-Za-z0-9]+$/.test(s);
@@ -35,39 +34,62 @@ function sanitizePO(po?: string): string {
   const safe = raw.replace(/[^A-Za-z0-9 _-]/g, '').slice(0, 40);
   return safe || `TEST-PO-${Date.now()}`;
 }
+type UiBody = Record<string, any>;
 
-type UiBody = {
-  profileId?: string;
-  checkoutProfileId?: string;
-  checkoutProfile?: string; // czasem nazwa (nie ID)
-  po?: string;
-  customerPurchaseOrderNumber?: string;
-  comment?: string;
-  expedite?: boolean;
-  expediteShipping?: boolean;
-  lines?: Array<{ tiPartNumber?: string; part?: string; pn?: string; tiPN?: string; quantity?: number; qty?: number }>;
-  orderLineItems?: Array<{ tiPartNumber: string; quantity: number; customerLineItemNumber?: string }>;
-  mode?: 'test' | 'prod' | 'live';
-  payment?: { type?: string; method?: string };
-};
+function pickFirstArray(ui: UiBody, keys: string[]): any[] {
+  for (const k of keys) {
+    const v = ui?.[k];
+    if (Array.isArray(v) && v.length) return v;
+  }
+  return [];
+}
+function pickProfileName(ui: UiBody): string | undefined {
+  const cands = ['checkoutProfile', 'profile', 'profileName', 'selectedProfileName'];
+  for (const k of cands) {
+    const val = ui?.[k];
+    if (typeof val === 'string' && val.trim()) return val.trim();
+  }
+  return undefined;
+}
+function readTiPartNumber(line: any): string | undefined {
+  const cands = ['tiPartNumber', 'tiPN', 'pn', 'part', 'tiPart', 'opn'];
+  for (const k of cands) {
+    const v = line?.[k];
+    if (typeof v === 'string' && v.trim()) return v.trim();
+  }
+  return undefined;
+}
+function readQty(line: any): number | undefined {
+  const cands = ['quantity', 'qty', 'count', 'amount'];
+  for (const k of cands) {
+    const n = Number(line?.[k]);
+    if (Number.isFinite(n) && n > 0) return n;
+  }
+  return undefined;
+}
 
 function normalizeToTiShape(ui: UiBody) {
-  // checkoutProfileId ustalimy niżej (może wymagać resolve po nazwie)
   let checkoutProfileId =
     ui.checkoutProfileId ??
     ui.profileId ??
     (looksLikeProfileId(ui.checkoutProfile) ? ui.checkoutProfile : undefined);
 
-  const rawLines =
-    (Array.isArray(ui.orderLineItems) && ui.orderLineItems) ||
-    (Array.isArray(ui.lines) && ui.lines) ||
-    [];
+  const checkoutProfileName = pickProfileName(ui);
+
+  const rawLines = pickFirstArray(ui, [
+    'orderLineItems',
+    'lines',
+    'lineItems',
+    'items',
+    'cartLines',
+    'cart',
+  ]);
 
   const orderLineItems = rawLines
     .map((l: any, i: number) => {
-      const tiPartNumber = l?.tiPartNumber ?? l?.tiPN ?? l?.part ?? l?.pn;
-      const quantity = Number(l?.quantity ?? l?.qty);
-      if (!tiPartNumber || !quantity || quantity <= 0) return null;
+      const tiPartNumber = readTiPartNumber(l);
+      const quantity = readQty(l);
+      if (!tiPartNumber || !quantity) return null;
       return {
         tiPartNumber,
         quantity,
@@ -91,13 +113,13 @@ function normalizeToTiShape(ui: UiBody) {
       : { type: 'tiloc', method: 'LOC' };
 
   const customerOrderComments =
-    ui.comment && ui.comment.trim()
-      ? [{ message: ui.comment.trim() }]
+    ui.comment && String(ui.comment).trim()
+      ? [{ message: String(ui.comment).trim() }]
       : undefined;
 
   return {
     checkoutProfileId,
-    checkoutProfileName: ui.checkoutProfile, // jeśli to nazwa, spróbujemy ją zresolve'ować
+    checkoutProfileName,
     customerPurchaseOrderNumber,
     customerOrderComments,
     expediteShipping,
@@ -106,7 +128,7 @@ function normalizeToTiShape(ui: UiBody) {
   };
 }
 
-/** ───────── helpers: TI calls ───────── */
+/* ───── TI calls ───── */
 async function fetchWithRetry(url: string, token: string, body: any) {
   let lastText = '';
   for (let a = 0; a < 3; a++) {
@@ -119,6 +141,7 @@ async function fetchWithRetry(url: string, token: string, body: any) {
       },
       body: JSON.stringify(body),
     });
+
     const correlationId =
       res.headers.get('x-ti-correlation-id') ||
       res.headers.get('x-correlation-id') ||
@@ -149,13 +172,9 @@ async function resolveProfileIdByName(token: string, name: string): Promise<stri
       process.env.NEXT_PUBLIC_TI_STORE_BASE ||
       process.env.TI_STORE_BASE ||
       'https://transact.ti.com';
-    // TI checkout profile list: GET /v2/store/checkout-profiles
     const url = `${base.replace(/\/+$/, '')}/v2/store/checkout-profiles`;
     const res = await fetch(url, {
-      headers: {
-        Authorization: `Bearer ${token}`,
-        Accept: 'application/json',
-      },
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
       cache: 'no-store',
     });
     const txt = await res.text();
@@ -179,7 +198,7 @@ async function resolveProfileIdByName(token: string, name: string): Promise<stri
   }
 }
 
-/** ───────── debug token meta ───────── */
+/* ───── token meta (debug) ───── */
 async function fetchTokenMeta(): Promise<{ client_id?: string; application_name?: string } | null> {
   try {
     const tokenUrl = process.env.TI_TOKEN_URL || 'https://transact.ti.com/v1/oauth/accesstoken';
@@ -203,14 +222,12 @@ async function fetchTokenMeta(): Promise<{ client_id?: string; application_name?
   }
 }
 
-/** ───────── route ───────── */
+/* ───── route ───── */
 export async function POST(req: Request) {
   const debug = process.env.TI_DEBUG === '1';
 
   try {
     const base = computeOrdersBase();
-
-    // body z UI
     let ui: UiBody = {};
     try {
       ui = await req.json();
@@ -220,17 +237,34 @@ export async function POST(req: Request) {
     const isTest = isTestMode(ui.mode);
     const url = `${base}${isTest ? '/test' : ''}`;
 
-    // normalizacja
     const tiBody = normalizeToTiShape(ui);
 
-    // jeśli mamy nazwę profilu (nie ID) – spróbuj zresolve'ować
+    // jeśli przyszła nazwa profilu – spróbuj zresolve'ować do ID
     if (!tiBody.checkoutProfileId && tiBody.checkoutProfileName) {
       const tokenForResolve = await getAccessToken();
-      const resolved = await resolveProfileIdByName(tokenForResolve, tiBody.checkoutProfileName);
+      const resolved = await resolveProfileIdByName(
+        tokenForResolve,
+        tiBody.checkoutProfileName
+      );
       if (resolved) tiBody.checkoutProfileId = resolved;
     }
 
-    // walidacja minimalna
+    if (debug) {
+      console.log(
+        '[TI][CREATE][UI-keys]',
+        JSON.stringify({ uiKeys: Object.keys(ui || {}), mode: isTest ? 'test' : 'prod' })
+      );
+      console.log(
+        '[TI][CREATE][UI-lines-shape]',
+        JSON.stringify({
+          linesKeysTried: ['orderLineItems','lines','lineItems','items','cartLines','cart'],
+          gotLinesCount:
+            Array.isArray(tiBody.orderLineItems) ? tiBody.orderLineItems.length : 0,
+        })
+      );
+    }
+
+    // minimalna walidacja
     if (
       !tiBody.checkoutProfileId ||
       !Array.isArray(tiBody.orderLineItems) ||
@@ -239,13 +273,11 @@ export async function POST(req: Request) {
       return NextResponse.json(
         {
           ok: false,
-          status: 400,
           error:
-            'Invalid payload: checkoutProfileId and orderLineItems are required. ' +
-            'If UI sends checkoutProfile (name), make sure it can be resolved to ID.',
+            'Invalid payload: checkoutProfileId and orderLineItems are required. If UI sends checkoutProfile (name), make sure it can be resolved to ID.',
           receivedShape: {
             hasCheckoutProfileId: !!tiBody.checkoutProfileId,
-            hasName: !!tiBody.checkoutProfileName,
+            hasProfileName: !!tiBody.checkoutProfileName,
             orderLineItemsCount: Array.isArray(tiBody.orderLineItems)
               ? tiBody.orderLineItems.length
               : 0,
@@ -256,10 +288,8 @@ export async function POST(req: Request) {
       );
     }
 
-    // token OAuth
     const token = await getAccessToken();
 
-    // LOG REQ
     if (debug) {
       const meta = await fetchTokenMeta();
       console.log(
@@ -272,15 +302,13 @@ export async function POST(req: Request) {
           firstLine: tiBody.orderLineItems[0],
           payment: tiBody.payment,
           poLen: tiBody.customerPurchaseOrderNumber?.length ?? 0,
-          tokenMeta: meta, // zawiera client_id / application_name
+          tokenMeta: meta,
         })
       );
     }
 
-    // call TI
     const result = await fetchWithRetry(url, token, tiBody);
 
-    // LOG RES
     if (debug && result?.res) {
       const res = result.res;
       const corr =
@@ -318,8 +346,7 @@ export async function POST(req: Request) {
           payloadSent: tiBody,
           error: result.data ?? result.raw ?? 'Create failed',
           hint:
-            'Jeśli to 5xx z TI, spróbuj ponownie lub zgłoś z correlationId. ' +
-            'Upewnij się, że używasz OPN (np. SN74HC00N), a nie GPN (SN74HC00).',
+            'Jeśli to 5xx z TI, spróbuj ponownie lub zgłoś z correlationId. Upewnij się, że używasz OPN (np. SN74HC00N), a nie GPN (SN74HC00).',
         },
         { status: result.status }
       );
@@ -338,5 +365,3 @@ export async function POST(req: Request) {
     );
   }
 }
-
-
