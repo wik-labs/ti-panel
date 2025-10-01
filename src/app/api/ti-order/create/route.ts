@@ -1,63 +1,129 @@
 import { NextResponse } from 'next/server';
 import { getAccessToken } from '@/lib/ti-oauth';
 
-export const runtime = 'nodejs';
+const BASE = process.env.NEXT_PUBLIC_TI_STORE_BASE ?? 'https://transact.ti.com';
+const ORDER_MODE =
+  (process.env.TI_ORDER_MODE ?? process.env.NEXT_PUBLIC_TI_ORDER_MODE ?? 'test')
+    .toString()
+    .toLowerCase(); // 'test' | 'live'
 
-type UiBody = {
-  profileId?: string;                 // z Twojego UI
-  checkoutProfileId?: string;         // alternatywa
-  po?: string;
-  customerPurchaseOrderNumber?: string;
-  comment?: string;
-  expedite?: boolean;
-  expediteShipping?: boolean;
-  lines?: Array<{ tiPartNumber: string; quantity: number }>;
-  orderLineItems?: Array<{ tiPartNumber: string; quantity: number }>;
-  mode?: 'test' | 'live';
-};
+const DEBUG = (process.env.TI_DEBUG_ORDER ?? '0') === '1';
 
-function buildTiBody(ui: UiBody) {
-  const checkoutProfileId =
-    ui.checkoutProfileId ??
-    ui.profileId; // <-- akceptujemy oba
-
-  const orderLineItems =
-    (ui.orderLineItems && Array.isArray(ui.orderLineItems) ? ui.orderLineItems : null) ??
-    (ui.lines && Array.isArray(ui.lines) ? ui.lines : null) ??
-    [];
-
-  const body = {
-    checkoutProfileId,
-    customerPurchaseOrderNumber:
-      ui.customerPurchaseOrderNumber ??
-      ui.po ??
-      `TEST-PO-${Date.now()}`,
-    customerOrderComments:
-      ui.comment && ui.comment.trim() ? [{ message: ui.comment.trim() }] : undefined,
-    expediteShipping:
-      typeof ui.expediteShipping === 'boolean'
-        ? ui.expediteShipping
-        : !!ui.expedite,
-    orderLineItems: orderLineItems.map((l, i) => ({
-      tiPartNumber: l.tiPartNumber,
-      quantity: Number(l.quantity),
-      customerLineItemNumber: String(i + 1),
-    })),
-  };
-
-  return body;
+function buildCreateUrl(mode: string) {
+  return mode === 'live'
+    ? `${BASE}/v2/store/orders/`
+    : `${BASE}/v2/store/orders/test`;
 }
 
-function modeIsTest(uiMode?: string) {
-  const envMode = (process.env.TI_ORDER_MODE || process.env.NEXT_PUBLIC_TI_ORDER_MODE || 'test').toLowerCase();
-  const m = (uiMode || envMode).toLowerCase();
-  return m === 'test';
+function safeParse(text: string | null) {
+  if (!text) return null;
+  try { return JSON.parse(text); } catch { return null; }
 }
 
-async function fetchTi(url: string, token: string, payload: any) {
-  // proste retry na 5xx (np. czasowe 503 po ich stronie)
-  let lastText = '';
-  for (let attempt = 0; attempt < 2; attempt++) {
+export async function POST(req: Request) {
+  try {
+    const ui = (await req.json()) as any;     // może być { order: {...} } albo „płasko”
+    const mode = (ui?.mode ?? ORDER_MODE)?.toString().toLowerCase();
+    const url = buildCreateUrl(mode);
+
+    // ── weź źródło pól z koperty lub z root ───────────────────────────
+    const hasEnvelope = ui && typeof ui.order === 'object' && ui.order !== null;
+    const src = hasEnvelope ? ui.order : ui;
+
+    // profileId / checkoutProfileId
+    const checkoutProfileId =
+      (src?.checkoutProfileId ??
+        src?.profileId ??
+        src?.profile?.checkoutProfileId ??
+        src?.profile?.id ??
+        '')
+        .toString()
+        .trim();
+
+    // kandydaci na linie
+    let lines =
+      src?.lineItems ??
+      src?.orderLineItems ??
+      src?.lines ??
+      src?.items ??
+      src?.cartLines ??
+      src?.cart ??
+      [];
+
+    if (!Array.isArray(lines)) lines = [];
+
+    if (!checkoutProfileId) {
+      return NextResponse.json(
+        { ok: false, error: 'Missing checkoutProfileId (UI: profileId / checkoutProfileId / order.checkoutProfileId)' },
+        { status: 400 },
+      );
+    }
+    if (lines.length === 0) {
+      return NextResponse.json(
+        { ok: false, error: 'Missing line items (UI: lineItems / orderLineItems / lines / cartLines)' },
+        { status: 400 },
+      );
+    }
+
+    // ── zbuduj LEGACY payload zgodny z działającą wersją ───────────────
+    const legacyOrder: any = {
+      checkoutProfileId,
+      customerPurchaseOrderNumber:
+        src?.customerPurchaseOrderNumber ?? src?.po ?? `TEST-PO-${Date.now()}`,
+      expediteShipping: !!(src?.expediteShipping ?? src?.expedite),
+      customerOrderComments: src?.comment ? [{ message: String(src.comment) }] : src?.customerOrderComments,
+      // najważniejsze – używamy lineItems
+      lineItems: lines.map((l: any, i: number) => ({
+        customerLineItemNumber: Number(l?.customerLineItemNumber ?? l?.lineNo ?? i + 1),
+        tiPartNumber: String(l?.tiPartNumber ?? l?.pn ?? l?.part ?? ''),
+        quantity: Number(l?.quantity ?? l?.qty ?? 0),
+      })),
+      // testowa wersja legacy miała też datę zamówienia
+      purchaseOrderDate: (src?.purchaseOrderDate && new Date(src.purchaseOrderDate).toString() !== 'Invalid Date')
+        ? new Date(src.purchaseOrderDate).toISOString()
+        : new Date().toISOString(),
+    };
+
+    // Jeśli przyszła koperta – połącz „lekko”, ale normalizuj klucze
+    if (hasEnvelope) {
+      const incoming = { ...ui.order };
+      // zamień orderLineItems -> lineItems jeśli trzeba
+      if (!incoming.lineItems && Array.isArray(incoming.orderLineItems)) {
+        incoming.lineItems = incoming.orderLineItems.map((l: any, i: number) => ({
+          customerLineItemNumber: Number(l?.customerLineItemNumber ?? l?.lineNo ?? i + 1),
+          tiPartNumber: String(l?.tiPartNumber ?? ''),
+          quantity: Number(l?.quantity ?? 0),
+        }));
+        delete incoming.orderLineItems;
+      }
+      // dopnij purchaseOrderDate jeśli brak
+      if (!incoming.purchaseOrderDate) {
+        incoming.purchaseOrderDate = legacyOrder.purchaseOrderDate;
+      }
+      // jeśli payment to LOC (domyślne dla profilu), usuń – legacy tak działało
+      if (incoming.payment && String(incoming.payment.type).toLowerCase() === 'tiloc') {
+        delete incoming.payment;
+      }
+      // scal minimalnie nadpisując legacy tym, co przyszło
+      Object.assign(legacyOrder, incoming);
+    }
+
+    // ostateczna koperta
+    const payload = { order: legacyOrder };
+
+    if (DEBUG) {
+      const first = legacyOrder?.lineItems?.[0];
+      console.log('[TI][CREATE][REQ]', JSON.stringify({
+        url, mode, checkoutProfileId,
+        lineCount: legacyOrder?.lineItems?.length,
+        firstLine: first,
+        hasPayment: !!legacyOrder?.payment,
+        poLen: String(legacyOrder?.customerPurchaseOrderNumber ?? '').length,
+      }));
+    }
+
+    // ── call TI ─────────────────────────────────────────────────────────
+    const token = await getAccessToken();
     const res = await fetch(url, {
       method: 'POST',
       headers: {
@@ -68,104 +134,31 @@ async function fetchTi(url: string, token: string, payload: any) {
       body: JSON.stringify(payload),
     });
 
-    lastText = await res.text();
-    if (res.ok) {
-      try { return { ok: true, json: lastText ? JSON.parse(lastText) : null, status: res.status }; }
-      catch { return { ok: true, json: null, raw: lastText, status: res.status }; }
-    }
+    const correlationId = res.headers.get('x-ti-correlation-id');
+    const raw = await res.text();
+    const data = safeParse(raw);
 
-    // tylko na 5xx podejmij drugą próbę
-    if (res.status >= 500 && attempt === 0) {
-      await new Promise(r => setTimeout(r, 700));
-      continue;
-    }
-
-    let err: any = null;
-    try { err = lastText ? JSON.parse(lastText) : null; } catch {}
-    return { ok: false, status: res.status, err, raw: lastText };
-  }
-  // jeżeli tu trafimy, to po 2 próbach nadal 5xx
-  let err: any = null;
-  try { err = lastText ? JSON.parse(lastText) : null; } catch {}
-  return { ok: false, status: 503, err, raw: lastText };
-}
-
-export async function POST(req: Request) {
-  try {
-
-function computeOrdersBase() {
-  const explicit = process.env.TI_ORDER_BASE;
-  if (explicit) return explicit.replace(/\/+$/, '');
-
-  const storeBase =
-    process.env.NEXT_PUBLIC_TI_STORE_BASE ||
-    process.env.TI_STORE_BASE ||
-    'https://transact.ti.com';
-
-  return `${storeBase.replace(/\/+$/, '')}/v2/store/orders`;
-}
-
-const base = computeOrdersBase();
-
-    if (!base) {
-      return NextResponse.json({ ok: false, error: 'Missing TI_ORDER_BASE env' }, { status: 500 });
-    }
-
-    // wczytaj body z UI
-    let ui: UiBody = {};
-    try {
-      ui = await req.json();
-    } catch {
-      ui = {};
-    }
-
-    // zbuduj TI payload
-    const tiBody = buildTiBody(ui);
-
-    // minimalna walidacja
-    if (!tiBody.checkoutProfileId || !Array.isArray(tiBody.orderLineItems) || !tiBody.orderLineItems.length) {
+    if (!res.ok) {
+      if (DEBUG) {
+        console.log('[TI][CREATE][RES]', JSON.stringify({
+          status: res.status,
+          correlationId,
+          headers: { 'x-ti-correlation-id': correlationId, 'content-type': res.headers.get('content-type') },
+          bodySnippet: raw?.slice(0, 4000),
+        }));
+      }
       return NextResponse.json(
-        {
-          ok: false,
-          status: 400,
-          error: 'Invalid payload: checkoutProfileId and orderLineItems are required.',
-          received: {
-            checkoutProfileId: tiBody.checkoutProfileId ?? null,
-            orderLineItemsCount: Array.isArray(tiBody.orderLineItems) ? tiBody.orderLineItems.length : 0,
-            uiKeys: Object.keys(ui || {}),
-          },
-        },
-        { status: 400 },
-      );
+  { ok: false, status: res.status, endpoint: url, correlationId, error: (data ?? raw ?? 'Unknown error') },
+  { status: res.status },
+);
+
     }
 
-    const token = await getAccessToken();
-    const isTest = modeIsTest(ui.mode);
-    const url = `${base}${isTest ? '/test' : ''}`; // POST /v2/store/orders[/test]
-
-    const { ok, json, err, raw, status } = await fetchTi(url, token, tiBody);
-    if (!ok) {
-      return NextResponse.json(
-        {
-          ok: false,
-          status,
-          endpoint: url,
-          payloadPreview: {
-            checkoutProfileId: tiBody.checkoutProfileId,
-            lines: tiBody.orderLineItems.length,
-            expediteShipping: !!tiBody.expediteShipping,
-          },
-          error: err ?? raw ?? 'Create failed',
-          hint:
-            'Jeśli to 5xx z TI, spróbuj ponownie. Upewnij się, że TI_ORDER_BASE to root /v2/store/orders (bez /test), ' +
-            'a tryb wybiera się przez TI_ORDER_MODE lub body.mode.',
-        },
-        { status },
-      );
-    }
-
-    return NextResponse.json({ ok: true, result: json, meta: { url } });
+    return NextResponse.json(
+      { ok: true, result: data, endpoint: url, correlationId },
+      { status: 201 },
+    );
   } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message ?? 'create crashed' }, { status: 500 });
+    return NextResponse.json({ ok: false, error: e?.message ?? 'Unhandled error' }, { status: 500 });
   }
 }

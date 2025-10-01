@@ -79,10 +79,7 @@ function pickUnitPrice(pricing: PricingRow[] | undefined, qty: number, ccy: stri
   if (!pricing || !pricing.length) return undefined;
   const row = pricing.find((p) => p.currency === ccy) ?? pricing[0];
   if (!row) return undefined;
-  // wybierz najwyższy prog <= qty
-  const sorted = [...row.priceBreaks].sort(
-    (a, b) => a.priceBreakQuantity - b.priceBreakQuantity
-  );
+  const sorted = [...row.priceBreaks].sort((a, b) => a.priceBreakQuantity - b.priceBreakQuantity);
   let price = sorted[0]?.price;
   for (const b of sorted) {
     if (qty >= b.priceBreakQuantity) price = b.price;
@@ -155,53 +152,66 @@ export default function InventoryPage() {
   }, []);
 
   /** ===== Load variants by GPN (PI v1) – z sessionStorage cache ===== */
-  async function loadVariantsByGpn(gpn: string) {
-    const key = `pi-gpn:${gpn.toUpperCase()}`;
-    setVariantsErr(null);
+// 30 minut TTL dla cache PI
+const PI_CACHE_TTL_MS = 30 * 60 * 1000;
 
+async function loadVariantsByGpn(gpn: string, force = false) {
+  const key = `pi-gpn:${gpn.toUpperCase()}`;
+  setVariantsErr(null);
+
+  // czyść listę na start, aby UI nie pokazywał starych danych
+  setVariants([]);
+
+  // 1) PRÓBA ODCZYTU Z CACHE (tylko jeśli NIE wymuszono)
+  if (!force) {
     try {
-      const fromSess = sessionStorage.getItem(key);
-      if (fromSess) {
-        const { data } = JSON.parse(fromSess);
-        setVariants(data);
-        setInfoMsg(`Warianty (OPN) dla GPN „${gpn}” załadowane z pamięci sesji.`);
-        return;
+      const raw = sessionStorage.getItem(key);
+      if (raw) {
+        const cached = JSON.parse(raw);
+        const age = Date.now() - (cached.at ?? 0);
+        const list = Array.isArray(cached.data) ? cached.data : [];
+        // używamy cache tylko jeśli są jakieś pozycje i nie jest przeterminowany
+        if (list.length > 0 && age < PI_CACHE_TTL_MS) {
+          setVariants(list);
+          setInfoMsg(`Warianty (OPN) dla „${gpn}” z pamięci: ${list.length} pozycji (cache < 30 min).`);
+          return;
+        }
       }
-    } catch {}
-
-    setVariants([]);
-    setVariantsLoading(true);
-    try {
-      const r = await fetch(`/api/ti-products/search?gpn=${encodeURIComponent(gpn)}`);
-      const j = await r.json();
-
-      if (r.ok && j?.ok) {
-        const flat: VariantBrief[] = (j.data as Array<any>).flatMap((d: any) =>
-          (d.orderablePartNumbers || []).map((opn: string) => ({
-            tiPartNumber: opn,
-            genericPartNumber: d.genericPartNumber,
-            description: d.description,
-          }))
-        );
-        setVariants(flat);
-        setInfoMsg(`Warianty (OPN) dla GPN „${gpn}” załadowane z Product Information API.`);
-        try {
-          sessionStorage.setItem(key, JSON.stringify({ data: flat, at: Date.now() }));
-        } catch {}
-      } else {
-        const msg = j?.error
-          ? typeof j.error === 'string'
-            ? j.error
-            : JSON.stringify(j.error)
-          : `PI search failed (${r.status})`;
-        setVariantsErr(msg);
-      }
-    } catch (e: any) {
-      setVariantsErr(e?.message ?? 'PI search failed');
-    } finally {
-      setVariantsLoading(false);
-    }
+    } catch { /* ignore */ }
   }
+
+  // 2) FRESH FETCH
+  setVariantsLoading(true);
+  try {
+    const r = await fetch(`/api/ti-products/search?gpn=${encodeURIComponent(gpn)}&page=1&size=50`, { cache: 'no-store' });
+    const j = await r.json();
+
+    if (!r.ok || !j?.ok) {
+      const msg =
+        j?.error ? (typeof j.error === 'string' ? j.error : JSON.stringify(j.error)) : `PI search failed (${r.status})`;
+      setVariantsErr(msg);
+      return;
+    }
+
+    const list = Array.isArray(j?.data?.items) ? j.data.items : [];
+    setVariants(list);
+    setInfoMsg(`Warianty (OPN) dla „${gpn}”: ${list.length} pozycji.`);
+
+    // zapisuj do cache tylko kiedy MAMY wyniki
+    if (list.length > 0) {
+      try {
+        sessionStorage.setItem(key, JSON.stringify({ data: list, at: Date.now() }));
+      } catch { /* ignore */ }
+    } else {
+      // jeśli pusto, wyczyść ewentualną starą zawartość
+      sessionStorage.removeItem(key);
+    }
+  } catch (e: any) {
+    setVariantsErr(e?.message ?? 'PI search failed');
+  } finally {
+    setVariantsLoading(false);
+  }
+}
 
   /** ===== Fetch OPN lub fallback GPN ===== */
   async function fetchPart(e?: React.FormEvent) {
@@ -226,21 +236,17 @@ export default function InventoryPage() {
 
       if (!res.ok || !json?.ok) {
         const payload = json?.error ?? json ?? {};
-        if (isGpnNotFoundErrorPayload(payload)) {
-          // użytkownik wpisał GPN – przełącz na listę wariantów
-          await loadVariantsByGpn(input);
-          setInfoMsg(
-            `Wpisano GPN („${input}”). Poniżej warianty (OPN) – kliknij „Load” przy wybranym, aby pobrać ceny i dostępność.`
-          );
-          return;
-        }
+      if (isGpnNotFoundErrorPayload(payload)) {
+        // użytkownik wpisał GPN – przełącz na listę wariantów i WYMUSZ świeży fetch
+        // oraz usuń ewentualny stary cache
+        try { sessionStorage.removeItem(`pi-gpn:${input.toUpperCase()}`); } catch {}
+        await loadVariantsByGpn(input, true);
+        setInfoMsg(`Wpisano GPN („${input}”). Poniżej warianty (OPN) – kliknij „Load”, aby pobrać ceny i dostępność.`);
+        return;
+      }
 
         throw new Error(
-          json?.error
-            ? typeof json.error === 'string'
-              ? json.error
-              : JSON.stringify(json.error)
-            : text || `Request failed (HTTP ${res.status})`
+          json?.error ? (typeof json.error === 'string' ? json.error : JSON.stringify(json.error)) : text || `HTTP ${res.status}`
         );
       }
 
@@ -377,15 +383,11 @@ export default function InventoryPage() {
         <div style={{ ...card, marginBottom: 16 }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6 }}>
             <h2 style={{ margin: 0 }}>{data.tiPartNumber}</h2>
-            {data.genericPartNumber && (
-              <span style={badge}>{data.genericPartNumber}</span>
-            )}
+            {data.genericPartNumber && <span style={badge}>{data.genericPartNumber}</span>}
             {data.lifeCycle && <span style={{ ...badge, color: '#34d399' }}>{data.lifeCycle}</span>}
           </div>
 
-          {data.description && (
-            <div style={{ opacity: 0.9, marginBottom: 12 }}>{data.description}</div>
-          )}
+          {data.description && <div style={{ opacity: 0.9, marginBottom: 12 }}>{data.description}</div>}
 
           {/* Badges: dostępność / MOQ / SPQ */}
           <div style={{ display: 'flex', gap: 8, marginBottom: 12, flexWrap: 'wrap' }}>
@@ -471,22 +473,20 @@ export default function InventoryPage() {
                 <div>Unit price</div>
               </div>
               <div>
-                {(data.pricing?.find((p) => p.currency === ccy) ?? data.pricing?.[0])?.priceBreaks?.map(
-                  (b, idx) => (
-                    <div
-                      key={idx}
-                      style={{
-                        display: 'grid',
-                        gridTemplateColumns: '160px 1fr',
-                        padding: '8px 10px',
-                        borderTop: '1px solid #111827',
-                      }}
-                    >
-                      <div>{b.priceBreakQuantity}</div>
-                      <div>{fmt(b.price, ccy)}</div>
-                    </div>
-                  )
-                ) || <div style={{ padding: 10, opacity: 0.7 }}>No pricing.</div>}
+                {(data.pricing?.find((p) => p.currency === ccy) ?? data.pricing?.[0])?.priceBreaks?.map((b, idx) => (
+                  <div
+                    key={idx}
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: '160px 1fr',
+                      padding: '8px 10px',
+                      borderTop: '1px solid #111827',
+                    }}
+                  >
+                    <div>{b.priceBreakQuantity}</div>
+                    <div>{fmt(b.price, ccy)}</div>
+                  </div>
+                )) || <div style={{ padding: 10, opacity: 0.7 }}>No pricing.</div>}
               </div>
             </div>
 
@@ -546,7 +546,13 @@ export default function InventoryPage() {
             <div style={{ marginTop: 12 }}>
               <button
                 onClick={() => loadVariantsByGpn(data.genericPartNumber!)}
-                style={{ padding: '6px 10px', borderRadius: 8, border: '1px solid #374151', background: '#0b0f17', color: 'white' }}
+                style={{
+                  padding: '6px 10px',
+                  borderRadius: 8,
+                  border: '1px solid #374151',
+                  background: '#0b0f17',
+                  color: 'white',
+                }}
                 title={`Load variants (OPN) for ${data.genericPartNumber}`}
               >
                 Load variants for {data.genericPartNumber}
@@ -556,60 +562,91 @@ export default function InventoryPage() {
         </div>
       )}
 
-      {/* Variants (generic) – renderowane zarówno po fallbacku z GPN, jak i po ręcznym „Load variants” */}
-      {(variantsLoading || variantsErr || variants.length > 0) && (
-        <div style={{ ...card }}>
-          <h3 style={{ marginTop: 0 }}>Variants (generic)</h3>
-          {variantsLoading && <div>Loading variants…</div>}
-          {variantsErr && (
-            <div style={{ color: '#fca5a5' }}>Variants error: {variantsErr}</div>
-          )}
-          {variants.length > 0 && (
-            <div style={{ fontSize: 14 }}>
-              {variants.map((v, i) => (
-                <div
-                  key={`${v.tiPartNumber}-${i}`}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 12,
-                    padding: '6px 8px',
-                    borderBottom: '1px solid #1f2937',
-                  }}
-                >
-                  <div
-                    style={{
-                      minWidth: 180,
-                      fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-                    }}
-                  >
-                    {v.tiPartNumber}
-                  </div>
-                  <div style={{ flex: 1, opacity: 0.85 }}>
-                    {v.description || '—'}
-                  </div>
-                  <button
-                    onClick={async () => {
-                      setPn(v.tiPartNumber);
-                      await fetchPart(); // pobierz ceny/dostępność dla tego OPN
-                    }}
-                    style={{
-                      padding: '4px 8px',
-                      borderRadius: 8,
-                      border: '1px solid #374151',
-                      background: '#0b0f17',
-                      color: 'white',
-                    }}
-                    title="Fetch price & availability for this OPN"
-                  >
-                    Load
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
+     {/* Variants (generic) */}
+{(variantsLoading || variantsErr || variants.length > 0) && (
+  <div style={{ ...card }}>
+    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+      <h3 style={{ marginTop: 0 }}>Variants (generic)</h3>
+      {/* narzędzia: Reload + Clear cache */}
+      <div style={{ display: 'flex', gap: 8 }}>
+        <button
+          onClick={() => {
+            const g = (data?.genericPartNumber || pn).trim();
+            if (!g) return;
+            try { sessionStorage.removeItem(`pi-gpn:${g.toUpperCase()}`); } catch {}
+            loadVariantsByGpn(g, true); // FORCE
+          }}
+          style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid #374151', background: '#0b0f17', color: 'white' }}
+          title="Force reload variants (ignore cache)"
+        >
+          Reload
+        </button>
+        <button
+          onClick={() => {
+            const g = (data?.genericPartNumber || pn).trim();
+            if (!g) return;
+            try { sessionStorage.removeItem(`pi-gpn:${g.toUpperCase()}`); } catch {}
+            setVariants([]);
+            setInfoMsg(`Cache wariantów dla „${g}” wyczyszczony.`);
+          }}
+          style={{ padding: '4px 8px', borderRadius: 8, border: '1px solid #374151', background: '#0b0f17', color: '#93c5fd' }}
+          title="Clear variants cache"
+        >
+          Clear cache
+        </button>
+      </div>
     </div>
-  );
+
+    {variantsLoading && <div>Loading variants…</div>}
+    {variantsErr && <div style={{ color: '#fca5a5' }}>Variants error: {variantsErr}</div>}
+    {!variantsLoading && !variantsErr && variants.length === 0 && (
+      <div style={{ opacity: 0.75 }}>No variants found.</div>
+    )}
+    {variants.length > 0 && (
+      <div style={{ fontSize: 14 }}>
+        {variants.map((v, i) => (
+          <div
+            key={`${v.tiPartNumber}-${i}`}
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              padding: '6px 8px',
+              borderBottom: '1px solid #1f2937',
+            }}
+          >
+            <div
+              style={{
+                minWidth: 180,
+                fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+              }}
+            >
+              {v.tiPartNumber}
+            </div>
+            <div style={{ flex: 1, opacity: 0.85 }}>{v.description || '—'}</div>
+            <button
+              onClick={async () => {
+                setPn(v.tiPartNumber);
+                await fetchPart(); // pobierz ceny/dostępność dla wybranego OPN
+              }}
+              style={{
+                padding: '4px 8px',
+                borderRadius: 8,
+                border: '1px solid #374151',
+                background: '#0b0f17',
+                color: 'white',
+              }}
+              title="Fetch price & availability for this OPN"
+            >
+              Load
+            </button>
+          </div>
+        ))}
+      </div>
+    )}
+  </div>
+)}
+
+</div>
+);
 }
